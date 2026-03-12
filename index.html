@@ -82,7 +82,7 @@
         .eliminated-score { opacity: 0.6; text-decoration: line-through; background: #ffcccc;}
 
         /* Screens */
-        #loading-screen, #setup-screen, #pass-screen, #play-screen, #result-screen { 
+        #loading-screen, #setup-screen, #pass-screen, #play-screen, #result-screen, #game-over-screen { 
             display: none; width: 100%; max-width: 900px; 
             background: var(--card-bg); padding: 20px; border-radius: 20px;
             border: 4px solid var(--dark); box-shadow: 8px 8px 0px rgba(0,0,0,0.15);
@@ -138,6 +138,12 @@
         /* Collection Animation Note */
         .collection-note { color: var(--dark); font-size: 1.2rem; font-weight: bold; margin-top: 10px; background: var(--primary); padding: 10px; border-radius: 10px; border: 3px solid var(--dark); }
         .elimination-note { color: var(--card-bg); background: var(--dark); font-size: 1.4rem; font-weight: bold; padding: 15px; border-radius: 10px; border: 3px solid var(--secondary); margin-bottom: 15px; display: none; }
+
+        /* Final Winner Screen Specific */
+        #game-over-screen { text-align: center; }
+        #final-winner-msg { font-size: clamp(2.5rem, 6vw, 4rem); color: var(--secondary); font-weight: 800; text-shadow: 3px 3px 0px var(--dark); margin: 20px 0; line-height: 1.2;}
+        .trophy-icon { font-size: 5rem; margin: 10px 0; }
+        #final-stats-msg { font-size: 1.5rem; background: var(--primary); padding: 20px; border-radius: 15px; border: 3px dashed var(--dark); margin-bottom: 30px; }
 
         h2, h3, h4 { margin: 10px 0; color: var(--dark); }
         
@@ -208,6 +214,13 @@
         <button onclick="nextRound()" style="margin-top: 20px; font-size: 1.4rem;">Next Round ➔</button>
     </div>
 
+    <div id="game-over-screen">
+        <div class="trophy-icon">🏆</div>
+        <div id="final-winner-msg"></div>
+        <div id="final-stats-msg"></div>
+        <button onclick="location.reload()" style="padding: 20px 40px; font-size: 1.5rem; margin-top: 10px; background: var(--accent); color: white;">Play Again 🔄</button>
+    </div>
+
     <script>
         let allCards = [];
         let players = [];
@@ -275,6 +288,28 @@
             sb.innerHTML = html;
         }
 
+        // Game Over Handlers
+        function showGameOverScreen(winnerName, winnerCards, loserName, loserCards) {
+            document.getElementById('global-scoreboard').style.display = 'none'; // Hide scoreboard
+            
+            document.getElementById('final-winner-msg').innerHTML = `${winnerName}<br>WINS!`;
+            
+            let statsHtml = `Collected <b>${winnerCards}</b> cards! 🃏`;
+            if (loserName) {
+                statsHtml += `<br><span style="font-size:1.1rem; color: var(--dark); margin-top: 10px; display: inline-block;">(Defeated ${loserName} who had ${loserCards} cards)</span>`;
+            }
+            document.getElementById('final-stats-msg').innerHTML = statsHtml;
+            
+            switchScreen('game-over-screen');
+        }
+
+        function showTieScreen(p1, p2) {
+            document.getElementById('global-scoreboard').style.display = 'none';
+            document.getElementById('final-winner-msg').innerHTML = `🤝 IT'S A PERFECT TIE! 🤝`;
+            document.getElementById('final-stats-msg').innerHTML = `Both ${p1.name} and ${p2.name} survived with exactly ${p1.deck.length} cards! Incredible!`;
+            switchScreen('game-over-screen');
+        }
+
         // --- 2. Setup Game ---
         function generateNameInputs() {
             const count = parseInt(document.getElementById('num-players').value);
@@ -293,7 +328,6 @@
             
             for (let i = 0; i < count; i++) {
                 let name = document.getElementById(`p-name-${i}`).value || `Player ${i+1}`;
-                // ADDED: Track eliminated status
                 players.push({ id: i, name: name, deck: [], eliminated: false });
             }
 
@@ -314,25 +348,27 @@
         function startNewRound(leaderId) {
             let alivePlayers = players.filter(p => !p.eliminated && p.deck.length > 0);
             
-            // End conditions
+            // End conditions: Trigger Final UI Screen instead of alerts
             if (players.length > 2 && alivePlayers.length === 2) {
                 let p1 = alivePlayers[0];
                 let p2 = alivePlayers[1];
                 if (p1.deck.length > p2.deck.length) {
-                    alert(`🏆 GAME OVER! ${p1.name} WINS with ${p1.deck.length} cards!`);
+                    showGameOverScreen(p1.name, p1.deck.length, p2.name, p2.deck.length);
                 } else if (p2.deck.length > p1.deck.length) {
-                    alert(`🏆 GAME OVER! ${p2.name} WINS with ${p2.deck.length} cards!`);
+                    showGameOverScreen(p2.name, p2.deck.length, p1.name, p1.deck.length);
                 } else {
-                    alert(`🤝 IT'S A PERFECT TIE!`);
+                    showTieScreen(p1, p2);
                 }
-                location.reload();
                 return;
             }
 
             if (alivePlayers.length <= 1) {
-                let winnerName = alivePlayers.length === 1 ? alivePlayers[0].name : "NOBODY";
-                alert(`🎉 ${winnerName} HAS COLLECTED ALL CARDS AND WINS!`);
-                location.reload();
+                let winner = alivePlayers.length === 1 ? alivePlayers[0] : null;
+                if(winner) {
+                    showGameOverScreen(winner.name, winner.deck.length, null, 0);
+                } else {
+                    showTieScreen(null, null); // Very rare double-elimination scenario
+                }
                 return;
             }
             
@@ -346,7 +382,6 @@
             
             turnQueue = [];
             let startIndex = alivePlayers.findIndex(p => p.id === leaderId);
-            // Fallback if leader somehow was eliminated in previous round
             if (startIndex === -1) startIndex = 0; 
             
             for(let i = 0; i < alivePlayers.length; i++) {
@@ -497,7 +532,7 @@
                 nextLeaderId = wPlayer.id;
             }
 
-            // ADDED: Check for Elimination Logic
+            // Check for Elimination Logic
             let newlyEliminatedText = "";
             players.forEach(p => {
                 if (p.deck.length === 0 && !p.eliminated) {
