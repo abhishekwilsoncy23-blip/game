@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Time Pass: Tactical Modulo War</title>
+    <title>Time Pass: Tactical War</title>
     <style>
         body {
             margin: 0; background-color: #1a1a1d; color: #fff;
@@ -105,7 +105,7 @@
         .log-round { color: #f1c40f; margin-top: 15px; font-size: 1.1rem; text-shadow: 0 0 5px #f1c40f; }
 
         /* =========================================
-           ✨ NEW VISUAL EFFECTS CSS ✨
+           ✨ VISUAL EFFECTS CSS ✨
            ========================================= */
         
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
@@ -241,29 +241,16 @@
                 players.push({
                     id: i, name: document.getElementById(`name-input-${i}`).value || `Player ${i+1}`,
                     team: i < count / 2 ? 'Red' : 'Blue', health: 100, bullets: 0,
-                    isAlive: true, hasActed: false 
+                    isAlive: true
                 });
             }
             document.getElementById('name-setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
             gameActive = true;
             
-            startNewRound();
-        }
-
-        function startNewRound() {
-            if (!gameActive) return;
-            let alivePlayers = players.filter(p => p.isAlive);
-            if (alivePlayers.length <= 1) return;
-
-            players.forEach(p => p.hasActed = false);
-
-            let drawnNumber = Math.floor(Math.random() * 21) + 10;
-            let startingAliveIndex = drawnNumber % alivePlayers.length;
-            currentPlayerIndex = alivePlayers[startingAliveIndex].id;
-
-            logAction(`<div class="log-round">🎲 <b>NEW ROUND!</b> Number <b>${drawnNumber}</b> drawn! (${drawnNumber} % ${alivePlayers.length} alive). <b>${players[currentPlayerIndex].name}</b> goes first!</div>`);
-            
+            // Set turn to the very first player
+            currentPlayerIndex = 0; 
+            logAction(`<div class="log-round">⚔️ <b>BATTLE BEGINS!</b> Strict turn order initiated.</div>`);
             startTurn();
         }
 
@@ -287,7 +274,6 @@
                 shooter.health = Math.min(100, shooter.health + damage);
                 logAction(`🟢 <b>${shooter.name}</b> healed 10% health!`);
                 
-                // Trigger Visual Effect for Healing
                 spawnVFX(shooterId, 'Heal', damage);
                 
                 setTimeout(endTurn, 600); // Slight delay so player sees the heal pop
@@ -330,54 +316,46 @@
             renderBattlefield();
         }
 
-        // --- NEW VFX SYSTEM ---
         function spawnVFX(playerId, weaponType, amount) {
             let targetNode = document.getElementById(`player-node-${playerId}`);
             if (!targetNode) return;
             
-            // Get screen coordinates of the target player's box
             let rect = targetNode.getBoundingClientRect();
             let x = rect.left + (rect.width / 2);
             let y = rect.top + (rect.height / 2);
 
-            // 1. Trigger Screen Shake
             let body = document.body;
             body.classList.remove('shake-mild', 'shake-intense');
             void body.offsetWidth; // Force CSS reflow to restart animation
             if (amount >= 30 && weaponType !== 'Heal') body.classList.add('shake-intense');
             else if (weaponType !== 'Heal') body.classList.add('shake-mild');
 
-            // 2. Create Floating Container
             let fx = document.createElement('div');
             fx.className = 'fx-container';
             fx.style.left = x + 'px';
             fx.style.top = y + 'px';
             
-            // 3. Select Emoji/Sprite based on weapon
             let sprite = document.createElement('div');
             sprite.className = 'fx-sprite';
             if (weaponType === 'Heal') sprite.innerText = '✨💚✨';
             else if (weaponType === 'Grenade') sprite.innerText = '💥💨';
             else if (weaponType === 'Airstrike') sprite.innerText = '💣🔥💥';
             else if (weaponType === 'Bunker Buster') sprite.innerText = '☢️🔥🌋';
-            else sprite.innerText = '💥'; // Base Shoot
+            else sprite.innerText = '💥'; 
             
             fx.appendChild(sprite);
 
-            // 4. Create Floating Damage/Heal Number
             let text = document.createElement('div');
             text.className = weaponType === 'Heal' ? 'heal-text' : 'dmg-text';
             text.innerText = weaponType === 'Heal' ? `+${amount}` : `-${amount}`;
             fx.appendChild(text);
 
-            // 5. Inject to screen and clean up after animation finishes
             document.body.appendChild(fx);
             setTimeout(() => { 
                 fx.remove(); 
                 body.classList.remove('shake-mild', 'shake-intense'); 
             }, 1200);
         }
-        // ----------------------
 
         function cancelTargeting(render = true) {
             targetingMode = null;
@@ -387,19 +365,23 @@
         }
 
         function endTurn() {
-            players[currentPlayerIndex].hasActed = true;
-            
+            if (!gameActive) return;
+
+            let startIndex = currentPlayerIndex;
             let nextIndex = (currentPlayerIndex + 1) % players.length;
-            while (!players[nextIndex].isAlive && nextIndex !== currentPlayerIndex) {
+            
+            // Keep skipping until we find someone who is still alive
+            while (!players[nextIndex].isAlive && nextIndex !== startIndex) {
                 nextIndex = (nextIndex + 1) % players.length;
             }
 
-            if (players[nextIndex].hasActed) {
-                startNewRound();
-            } else {
-                currentPlayerIndex = nextIndex;
-                startTurn();
+            // If the next index wraps back to the start or a lower number, a new round is starting
+            if (nextIndex <= startIndex && players.filter(p => p.isAlive).length > 1) {
+                logAction(`<div class="log-round">🔄 <b>NEW ROUND!</b> Back to the top of the order!</div>`);
             }
+
+            currentPlayerIndex = nextIndex;
+            startTurn();
         }
 
         function renderBattlefield() {
@@ -410,7 +392,7 @@
             players.forEach(p => {
                 let div = document.createElement('div');
                 div.className = `player ${!p.isAlive ? 'dead' : ''}`;
-                div.id = `player-node-${p.id}`; // Crucial for mapping VFX coordinates
+                div.id = `player-node-${p.id}`; 
                 
                 if (targetingMode && p.isAlive && p.team !== players.find(s => s.id === targetingMode.shooterId).team) {
                     div.classList.add('targetable');
