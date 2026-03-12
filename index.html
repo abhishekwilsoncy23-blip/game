@@ -265,6 +265,16 @@
         let targetingMode = null; 
         let initialPlayerCount = 0;
 
+        // NEW FUNCTION: Handles writing output to the action log div
+        function logAction(message) {
+            let logContainer = document.getElementById('action-log');
+            let newEntry = document.createElement('div');
+            newEntry.className = 'log-entry';
+            newEntry.innerHTML = message;
+            logContainer.appendChild(newEntry);
+            logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll
+        }
+
         function goToNameSetup() {
             let count = parseInt(document.getElementById('player-count').value);
             if (count < 2 || count % 2 !== 0) {
@@ -503,7 +513,6 @@
             }
 
             // 2. Sudden Death Condition (1v1 Showdown)
-            // Note: We only trigger this if the game originally started with more than 2 players.
             if (initialPlayerCount > 2 && redAlive.length === 1 && blueAlive.length === 1) {
                 let redP = redAlive[0];
                 let blueP = blueAlive[0];
