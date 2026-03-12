@@ -16,16 +16,14 @@
             /* =========================================
                🏜️ DESERT WAR BACKGROUND CREATION 🏜️
                ========================================= */
-            /* Dark dusky sky fading to distant smoke/sand and then sandy ground */
             background: 
                 linear-gradient(to bottom, #1a1a1d 0%, #1a1a1d 40%, rgba(139, 69, 19, 0.5) 60%, #c19a6b 100%),
-                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="noise" opacity="0.1"/></svg>'); /* Slight noise for sand texture */
-            background-color: #c19a6b; /* Base sand color fallback */
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="noise" opacity="0.1"/></svg>'); 
+            background-color: #c19a6b; 
             background-size: cover;
             background-attachment: fixed;
         }
 
-        /* Adding distant drifting smoke particles via pseudo-element */
         body::before {
             content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 60%;
             background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0) 50%),
@@ -129,13 +127,25 @@
         .log-round { color: #d4a017; margin-top: 15px; font-size: 1.1rem; text-shadow: 0 0 5px #d4a017; }
 
         /* =========================================
+           📊 WEAPON CHART STYLING 📊
+           ========================================= */
+        #weapon-chart {
+            background: rgba(44, 62, 80, 0.9); padding: 15px; border-radius: 8px;
+            margin-top: 20px; width: 100%; box-sizing: border-box;
+            border: 1px solid #c19a6b; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #weapon-chart h3 { margin: 0 0 10px 0; color: #d4a017; }
+        #weapon-chart table { width: 100%; border-collapse: collapse; color: #fff; font-size: 0.9rem; }
+        #weapon-chart th, #weapon-chart td { border: 1px solid rgba(255,255,255,0.2); padding: 6px; }
+        #weapon-chart th { background: #34495e; color: #f1c40f; }
+
+        /* =========================================
            ✨ VISUAL EFFECTS CSS ✨
            ========================================= */
         
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* Screen Shake */
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
             20% { transform: translate(-3px, 0px) rotate(1deg); }
@@ -147,14 +157,12 @@
         .shake-intense { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
         .shake-mild { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
 
-        /* Floating VFX Container */
         .fx-container { 
             position: fixed; pointer-events: none; z-index: 9999; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            transform: translate(-50%, -50%); /* Center on target coordinates */
+            transform: translate(-50%, -50%); 
         }
         
-        /* Floating Text (Damage / Heal) */
         @keyframes float-up {
             0% { opacity: 1; transform: translateY(0) scale(0.5); }
             20% { transform: translateY(-10px) scale(1.5); }
@@ -163,7 +171,6 @@
         .dmg-text { color: #ff4757; font-weight: 900; font-size: 2.5rem; text-shadow: 2px 2px 0 #000, -1px -1px 0 #fff; animation: float-up 1.2s ease-out forwards; z-index: 2;}
         .heal-text { color: #2ecc71; font-weight: 900; font-size: 2.5rem; text-shadow: 2px 2px 0 #000, -1px -1px 0 #fff; animation: float-up 1.2s ease-out forwards; z-index: 2;}
 
-        /* Explosions & Impacts */
         @keyframes explode {
             0% { opacity: 1; transform: scale(0.2) rotate(0deg); }
             40% { opacity: 1; transform: scale(2.5) rotate(15deg); }
@@ -171,7 +178,6 @@
         }
         .fx-sprite { font-size: 4rem; animation: explode 0.6s ease-out forwards; filter: drop-shadow(0 0 10px #ff6b81); position: absolute; z-index: 1;}
 
-        /* Dead Player Smoke & Overlay */
         @keyframes smoke-rise {
             0% { opacity: 0.8; transform: translateY(0) scale(1); }
             100% { opacity: 0; transform: translateY(-40px) scale(2); }
@@ -231,6 +237,24 @@
         </div>
 
         <div id="action-log"></div>
+
+        <div id="weapon-chart">
+            <h3>Weapon Arsenal Info</h3>
+            <table>
+                <tr>
+                    <th>Icon</th>
+                    <th>Action</th>
+                    <th>Cost (Oils)</th>
+                    <th>Effect</th>
+                </tr>
+                <tr><td>🔫</td><td>Shoot</td><td>1</td><td>5% Damage</td></tr>
+                <tr><td>💣</td><td>Grenade</td><td>3</td><td>7% Damage</td></tr>
+                <tr><td>❤️</td><td>Heal</td><td>7</td><td>+10% HP</td></tr>
+                <tr><td>✈️</td><td>Airstrike</td><td>10</td><td>15% Damage</td></tr>
+                <tr><td>🚀</td><td>Bunker Buster</td><td>20</td><td>17% Damage</td></tr>
+            </table>
+        </div>
+
         <button id="restart-btn" style="display:none; width:100%; padding: 20px; font-size: 1.5rem;" onclick="location.reload()">PLAY AGAIN</button>
     </div>
 
@@ -239,12 +263,14 @@
         let gameActive = false;
         let currentPlayerIndex = 0;
         let targetingMode = null; 
+        let initialPlayerCount = 0;
 
         function goToNameSetup() {
             let count = parseInt(document.getElementById('player-count').value);
             if (count < 2 || count % 2 !== 0) {
                 alert("Please enter an even number of players (2, 4, 6...)."); return;
             }
+            initialPlayerCount = count; // Save for sudden death check
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('name-setup-screen').style.display = 'flex';
             let redDiv = document.getElementById('red-names');
@@ -272,7 +298,6 @@
             document.getElementById('game-screen').style.display = 'flex';
             gameActive = true;
             
-            // Set turn to the very first player
             currentPlayerIndex = 0; 
             logAction(`<div class="log-round">⚔️ <b>BATTLE BEGINS!</b> Strict turn order initiated.</div>`);
             startTurn();
@@ -282,7 +307,6 @@
             if (!gameActive) return;
             let p = players[currentPlayerIndex];
             
-            // Note: We keep "bullets" as the internal variable name but use "Oils" in UI
             p.bullets += 1;
             
             document.getElementById('game-status').innerHTML = `🎯 ${p.name}'s Turn! Choose an Action.`;
@@ -299,10 +323,9 @@
                 shooter.health = Math.min(100, shooter.health + damage);
                 logAction(`🟢 <b>${shooter.name}</b> used ${cost} Oils to heal 10% health!`);
                 
-                // Trigger Visual Effect for Healing
                 spawnVFX(shooterId, 'Heal', damage);
                 
-                setTimeout(endTurn, 600); // Slight delay so player sees the heal pop
+                setTimeout(endTurn, 600); 
                 return;
             }
 
@@ -318,7 +341,6 @@
             let target = players.find(p => p.id === targetId);
             let shooter = players.find(p => p.id === targetingMode.shooterId);
 
-            // Grab target location BEFORE we change stats and re-render
             spawnVFX(targetId, targetingMode.weaponName, targetingMode.damage);
 
             shooter.bullets -= targetingMode.cost;
@@ -335,61 +357,52 @@
             checkGameOver();
             
             if (gameActive) {
-                // Wait slightly for VFX to finish before jumping to next turn
                 setTimeout(endTurn, 800); 
             }
             
             renderBattlefield();
         }
 
-        // --- VISUAL EFFECTS SYSTEM ---
         function spawnVFX(playerId, weaponType, amount) {
             let targetNode = document.getElementById(`player-node-${playerId}`);
             if (!targetNode) return;
             
-            // Get screen coordinates of the target player's box
             let rect = targetNode.getBoundingClientRect();
             let x = rect.left + (rect.width / 2);
             let y = rect.top + (rect.height / 2);
 
-            // 1. Trigger Screen Shake based on requested damages
             let body = document.body;
             body.classList.remove('shake-mild', 'shake-intense');
-            void body.offsetWidth; // Force CSS reflow to restart animation
+            void body.offsetWidth; 
             if (amount >= 15 && weaponType !== 'Heal') body.classList.add('shake-intense');
             else if (weaponType !== 'Heal') body.classList.add('shake-mild');
 
-            // 2. Create Floating Container
             let fx = document.createElement('div');
             fx.className = 'fx-container';
             fx.style.left = x + 'px';
             fx.style.top = y + 'px';
             
-            // 3. Select Emoji/Sprite based on weapon
             let sprite = document.createElement('div');
             sprite.className = 'fx-sprite';
             if (weaponType === 'Heal') sprite.innerText = '✨💚✨';
             else if (weaponType === 'Grenade') sprite.innerText = '💥💨';
             else if (weaponType === 'Airstrike') sprite.innerText = '💣✈️🔥';
             else if (weaponType === 'Bunker Buster') sprite.innerText = '🚀☢️🌋';
-            else sprite.innerText = '💥🔫'; // Base Shoot
+            else sprite.innerText = '💥🔫'; 
             
             fx.appendChild(sprite);
 
-            // 4. Create Floating Damage/Heal Number
             let text = document.createElement('div');
             text.className = weaponType === 'Heal' ? 'heal-text' : 'dmg-text';
             text.innerText = weaponType === 'Heal' ? `+${amount}%` : `-${amount}%`;
             fx.appendChild(text);
 
-            // 5. Inject to screen and clean up after animation finishes
             document.body.appendChild(fx);
             setTimeout(() => { 
                 fx.remove(); 
                 body.classList.remove('shake-mild', 'shake-intense'); 
             }, 1200);
         }
-        // ----------------------
 
         function cancelTargeting(render = true) {
             targetingMode = null;
@@ -404,12 +417,10 @@
             let startIndex = currentPlayerIndex;
             let nextIndex = (currentPlayerIndex + 1) % players.length;
             
-            // Keep skipping until we find someone who is still alive
             while (!players[nextIndex].isAlive && nextIndex !== startIndex) {
                 nextIndex = (nextIndex + 1) % players.length;
             }
 
-            // If the next index wraps back to the start or a lower number, a new round is starting
             if (nextIndex <= startIndex && players.filter(p => p.isAlive).length > 1) {
                 logAction(`<div class="log-round">🔄 <b>NEW ROUND!</b> Back to the top of the order!</div>`);
             }
@@ -426,7 +437,7 @@
             players.forEach(p => {
                 let div = document.createElement('div');
                 div.className = `player ${!p.isAlive ? 'dead' : ''}`;
-                div.id = `player-node-${p.id}`; // Crucial for mapping VFX coordinates
+                div.id = `player-node-${p.id}`; 
                 
                 if (targetingMode && p.isAlive && p.team !== players.find(s => s.id === targetingMode.shooterId).team) {
                     div.classList.add('targetable');
@@ -448,7 +459,6 @@
                     
                     if (!targetingMode) {
                         html += `<div class="arsenal">`;
-                        // Update Weapon Stats here (Name, Cost, Dmg/Heal, isHeal, Icon)
                         html += buildWeaponBtn(p, 'Shoot', 1, 5, false, '🔫');
                         html += buildWeaponBtn(p, 'Grenade', 3, 7, false, '💣');
                         html += buildWeaponBtn(p, 'Heal', 7, 10, true, '❤️');
@@ -468,31 +478,43 @@
             let canAfford = player.bullets >= cost;
             let classStr = `weapon-btn ${canAfford ? 'can-afford' : ''} ${isHeal ? 'heal' : ''}`;
             let clickAttr = canAfford ? `onclick="prepWeapon(${player.id}, '${name}', ${cost}, ${effect}, ${isHeal})"` : 'disabled';
-            // Update tooltip text to mention "oils" and percentage
             let tooltipText = isHeal ? `${name}: ${cost} oils (+${effect}% HP)` : `${name}: ${cost} oils (${effect}% dmg)`;
             return `<button class="${classStr}" ${clickAttr} title="${tooltipText}">${cost} ${icon}</button>`;
         }
 
-        function logAction(text) {
-            const logBox = document.getElementById('action-log');
-            const entry = document.createElement('div');
-            entry.className = 'log-entry'; entry.innerHTML = text;
-            logBox.prepend(entry);
+        function triggerWin(winnerText, subtitleText) {
+            gameActive = false;
+            document.getElementById('game-status').style.display = 'none';
+            document.getElementById('cancel-hint').style.display = 'none';
+            document.getElementById('restart-btn').style.display = 'block';
+            
+            logAction(`<h2 style="text-align:center; color:#fff; text-shadow:0 0 10px #d4a017;">🏆 ${winnerText} 🏆<br><small style="font-size: 0.9rem;">${subtitleText}</small></h2>`);
         }
 
         function checkGameOver() {
-            let redAlive = players.filter(p => p.team === 'Red' && p.isAlive).length;
-            let blueAlive = players.filter(p => p.team === 'Blue' && p.isAlive).length;
+            let redAlive = players.filter(p => p.team === 'Red' && p.isAlive);
+            let blueAlive = players.filter(p => p.team === 'Blue' && p.isAlive);
 
-            if (redAlive === 0 || blueAlive === 0) {
-                gameActive = false;
-                document.getElementById('game-status').style.display = 'none';
-                document.getElementById('cancel-hint').style.display = 'none';
-                document.getElementById('restart-btn').style.display = 'block';
+            // 1. Normal Win Condition
+            if (redAlive.length === 0 || blueAlive.length === 0) {
+                let winner = redAlive.length > 0 ? "TEAM RED WINS!" : "TEAM BLUE WINS!";
+                triggerWin(winner, "DOMINATING VICTORY!");
+                return;
+            }
+
+            // 2. Sudden Death Condition (1v1 Showdown)
+            // Note: We only trigger this if the game originally started with more than 2 players.
+            if (initialPlayerCount > 2 && redAlive.length === 1 && blueAlive.length === 1) {
+                let redP = redAlive[0];
+                let blueP = blueAlive[0];
                 
-                let winner = redAlive > 0 ? "TEAM RED" : "TEAM BLUE";
-                logAction(`<h2 style="text-align:center; color:#fff; text-shadow:0 0 10px #d4a017;">🏆 ${winner} WINS THE WAR! 🏆</h2>`);
-                renderBattlefield();
+                if (redP.health > blueP.health) {
+                    triggerWin("TEAM RED WINS!", `SUDDEN DEATH: ${redP.name} survived with more Health!`);
+                } else if (blueP.health > redP.health) {
+                    triggerWin("TEAM BLUE WINS!", `SUDDEN DEATH: ${blueP.name} survived with more Health!`);
+                } else {
+                    triggerWin("IT'S A DRAW!", `SUDDEN DEATH: Both survivors had exactly ${redP.health}% Health!`);
+                }
             }
         }
     </script>
