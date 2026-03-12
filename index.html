@@ -33,7 +33,17 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: inherit; margin-top: 10px; text-transform: uppercase;
         }
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        button.action-btn { background: #f1c40f; color: #000; font-size: 1.5rem; width: 100%; margin-bottom: 20px; }
+
+        #game-status {
+            background: #f1c40f; color: #000; font-size: 1.5rem; width: 100%; 
+            text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;
+        }
+
+        #cancel-hint {
+            background: #e74c3c; color: #fff; font-size: 1.2rem; width: 100%; 
+            text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; 
+            font-weight: bold; cursor: pointer; display: none;
+        }
 
         #battlefield { display: flex; justify-content: space-between; width: 100%; gap: 10px; }
 
@@ -51,7 +61,12 @@
             display: flex; flex-direction: column; gap: 5px; transition: 0.3s; position: relative;
         }
 
-        .player.dead { opacity: 0.3; filter: grayscale(100%); pointer-events: none; }
+        .player.active-turn {
+            border: 2px solid #f1c40f; transform: scale(1.03);
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.5); z-index: 10;
+        }
+
+        .player.dead { opacity: 0.3; filter: grayscale(100%); pointer-events: none; border: none; box-shadow: none; }
         .player.targetable { border: 2px dashed #e74c3c; cursor: crosshair; animation: pulse 1s infinite; }
         .player.targetable:hover { background: #e74c3c; }
 
@@ -72,6 +87,7 @@
         .weapon-btn.can-afford { background: #3498db; }
         .weapon-btn.can-afford:hover { background: #2980b9; }
         .weapon-btn.heal.can-afford { background: #2ecc71; }
+        .weapon-btn.pass { background: #95a5a6; }
 
         #action-log {
             background: #000; width: 100%; padding: 15px; box-sizing: border-box;
@@ -79,17 +95,14 @@
             height: 180px; overflow-y: auto; border: 1px solid #333; line-height: 1.4;
         }
         .log-entry { margin-bottom: 8px; border-bottom: 1px dashed #333; padding-bottom: 5px; }
+        .log-round { color: #f1c40f; margin-top: 15px; font-size: 1.1rem; }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
-        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
-    <h1>Tactical Modulo War</h1>
+    <h1>Tactical Turn War</h1>
 
     <div id="setup-screen">
         <div class="setup-box">
@@ -111,8 +124,8 @@
     </div>
 
     <div id="game-screen">
-        <button class="action-btn" id="deal-btn" onclick="dealBullets()">🎲 DRAW BULLETS!</button>
-        <div id="cancel-hint" style="display:none; color:#f1c40f; margin-bottom: 10px;">Select an enemy target! (Or click here to cancel)</div>
+        <div id="game-status">Loading...</div>
+        <div id="cancel-hint" onclick="cancelTargeting()">Select an enemy target! (Click here to cancel)</div>
         
         <div id="battlefield">
             <div class="team team-a" id="team-a-container">
@@ -132,72 +145,72 @@
     <script>
         let players = [];
         let gameActive = false;
-        let targetingMode = null; // Stores { shooterId, weaponName, cost, damage }
+        let currentPlayerIndex = 0;
+        let targetingMode = null; 
 
         function goToNameSetup() {
             let count = parseInt(document.getElementById('player-count').value);
             if (count < 2 || count % 2 !== 0) {
-                alert("Please enter an even number of players (2, 4, 6...).");
-                return;
+                alert("Please enter an even number of players (2, 4, 6...)."); return;
             }
-
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('name-setup-screen').style.display = 'flex';
-
             let redDiv = document.getElementById('red-names');
             let blueDiv = document.getElementById('blue-names');
             redDiv.innerHTML = ''; blueDiv.innerHTML = '';
 
             for (let i = 0; i < count; i++) {
                 let input = document.createElement('input');
-                input.type = 'text';
-                input.id = `name-input-${i}`;
-                input.value = `Player ${i + 1}`;
-                
-                if (i < count / 2) redDiv.appendChild(input);
-                else blueDiv.appendChild(input);
+                input.type = 'text'; input.id = `name-input-${i}`; input.value = `Player ${i + 1}`;
+                if (i < count / 2) redDiv.appendChild(input); else blueDiv.appendChild(input);
             }
         }
 
         function startGame() {
             let count = parseInt(document.getElementById('player-count').value);
             players = [];
-            
             for (let i = 0; i < count; i++) {
                 players.push({
-                    id: i,
-                    name: document.getElementById(`name-input-${i}`).value || `Player ${i+1}`,
-                    team: i < count / 2 ? 'Red' : 'Blue',
-                    health: 100,
-                    bullets: 0,
-                    isAlive: true
+                    id: i, name: document.getElementById(`name-input-${i}`).value || `Player ${i+1}`,
+                    team: i < count / 2 ? 'Red' : 'Blue', health: 100, bullets: 0,
+                    isAlive: true, hasActed: false // New stat to track who went this round
                 });
             }
-
             document.getElementById('name-setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
-            
-            // Add click listener to cancel targeting
-            document.getElementById('cancel-hint').addEventListener('click', cancelTargeting);
-
             gameActive = true;
-            logAction("⚔️ The battlefield is set! Draw numbers to distribute bullets.");
-            renderBattlefield();
+            
+            // Start the very first round!
+            startNewRound();
         }
 
-        function dealBullets() {
-            if (!gameActive || targetingMode) return;
-
+        function startNewRound() {
+            if (!gameActive) return;
             let alivePlayers = players.filter(p => p.isAlive);
-            let drawnNumber = Math.floor(Math.random() * 21) + 10; // 10 to 30
-            
-            // Distribute bullets one by one around the circle
-            for (let i = 0; i < drawnNumber; i++) {
-                let receiverIndex = i % alivePlayers.length;
-                alivePlayers[receiverIndex].bullets += 1;
-            }
+            if (alivePlayers.length <= 1) return; // Handled by game over
 
-            logAction(`🎲 Number <b>${drawnNumber}</b> drawn! Distributed ${drawnNumber} bullets around the survivors.`);
+            // Reset round tracking
+            players.forEach(p => p.hasActed = false);
+
+            // Magic Modulo Match to pick who starts
+            let drawnNumber = Math.floor(Math.random() * 21) + 10;
+            let startingAliveIndex = drawnNumber % alivePlayers.length;
+            currentPlayerIndex = alivePlayers[startingAliveIndex].id;
+
+            logAction(`<div class="log-round">🎲 <b>NEW ROUND!</b> Number <b>${drawnNumber}</b> drawn! (${drawnNumber} % ${alivePlayers.length} alive). <b>${players[currentPlayerIndex].name}</b> goes first!</div>`);
+            
+            startTurn();
+        }
+
+        function startTurn() {
+            if (!gameActive) return;
+            let p = players[currentPlayerIndex];
+            
+            // Give 1 bullet at the start of their turn
+            p.bullets += 1;
+            
+            document.getElementById('game-status').innerHTML = `💥 ${p.name}'s Turn! Choose an Action.`;
+            logAction(`➡️ <b>${p.name}'s Turn!</b> Gained 1 bullet (Total: ${p.bullets}).`);
             renderBattlefield();
         }
 
@@ -207,51 +220,64 @@
 
             if (isHeal) {
                 shooter.bullets -= cost;
-                shooter.health = Math.min(100, shooter.health + damage); // damage acts as heal amount
-                logAction(`🟢 <b>${shooter.name}</b> converted ${cost} bullets to restore 10% health!`);
-                renderBattlefield();
+                shooter.health = Math.min(100, shooter.health + damage);
+                logAction(`🟢 <b>${shooter.name}</b> healed 10% health!`);
+                endTurn(); // Action completes the turn
                 return;
             }
 
             targetingMode = { shooterId: shooterId, weaponName: weaponName, cost: cost, damage: damage };
             
-            document.getElementById('deal-btn').style.display = 'none';
+            document.getElementById('game-status').style.display = 'none';
             document.getElementById('cancel-hint').style.display = 'block';
-            logAction(`🎯 <b>${shooter.name}</b> is aiming a <b>${weaponName}</b>! Waiting for target...`);
             renderBattlefield();
         }
 
         function executeAttack(targetId) {
             if (!targetingMode) return;
-
             let target = players.find(p => p.id === targetId);
             let shooter = players.find(p => p.id === targetingMode.shooterId);
 
-            // Deduct cost and apply damage
             shooter.bullets -= targetingMode.cost;
             target.health -= targetingMode.damage;
             
             if (target.health <= 0) {
-                target.health = 0;
-                target.isAlive = false;
-                target.bullets = 0; // Lose bullets on death
+                target.health = 0; target.isAlive = false; target.bullets = 0;
             }
 
-            logAction(`💥 <b>${shooter.name}</b> used <b>${targetingMode.weaponName}</b> on <b>${target.name}</b> causing ${targetingMode.damage}% damage!`);
-            
-            if (!target.isAlive) {
-                logAction(`☠️ <b>${target.name} has been ELIMINATED!</b>`);
-            }
+            logAction(`💥 <b>${shooter.name}</b> blasted <b>${target.name}</b> with a ${targetingMode.weaponName} for ${targetingMode.damage}% damage!`);
+            if (!target.isAlive) logAction(`☠️ <b>${target.name} is ELIMINATED!</b>`);
 
-            cancelTargeting(); // Resets UI
+            cancelTargeting(false); 
             checkGameOver();
+            
+            if (gameActive) endTurn(); // Attack completes the turn
         }
 
-        function cancelTargeting() {
+        function cancelTargeting(render = true) {
             targetingMode = null;
-            document.getElementById('deal-btn').style.display = 'block';
             document.getElementById('cancel-hint').style.display = 'none';
-            renderBattlefield();
+            document.getElementById('game-status').style.display = 'block';
+            if (render) renderBattlefield();
+        }
+
+        function endTurn() {
+            // Mark current player as having taken their turn
+            players[currentPlayerIndex].hasActed = true;
+            
+            // Find next alive player in the circle
+            let nextIndex = (currentPlayerIndex + 1) % players.length;
+            while (!players[nextIndex].isAlive && nextIndex !== currentPlayerIndex) {
+                nextIndex = (nextIndex + 1) % players.length;
+            }
+
+            // Check if this new player has already acted. If yes, the round is over!
+            if (players[nextIndex].hasActed) {
+                startNewRound();
+            } else {
+                currentPlayerIndex = nextIndex;
+                startTurn();
+            }
         }
 
         function renderBattlefield() {
@@ -263,39 +289,40 @@
                 let div = document.createElement('div');
                 div.className = `player ${!p.isAlive ? 'dead' : ''}`;
                 
-                // Highlight as targetable if in targeting mode and on opposite team
+                // Highlight targetable enemies
                 if (targetingMode && p.isAlive && p.team !== players.find(s => s.id === targetingMode.shooterId).team) {
                     div.classList.add('targetable');
                     div.onclick = () => executeAttack(p.id);
                 }
 
                 let barColor = p.health > 50 ? "#2ecc71" : p.health > 20 ? "#f39c12" : "#e74c3c";
-
                 let html = `
                     <div class="player-header">
                         <span class="player-name">${p.name}</span>
                         <span class="bullet-count">🪙 ${p.bullets}</span>
                     </div>
-                    <div class="health-bar-bg">
-                        <div class="health-bar-fill" style="width: ${p.health}%; background: ${barColor};"></div>
-                    </div>
+                    <div class="health-bar-bg"><div class="health-bar-fill" style="width: ${p.health}%; background: ${barColor};"></div></div>
                     <div style="font-size: 0.8rem; text-align: right;">${p.health}% HP</div>
                 `;
 
-                // Add arsenal buttons if player is alive and it's not currently targeting mode
-                if (p.isAlive && !targetingMode) {
-                    html += `<div class="arsenal">`;
-                    html += buildWeaponBtn(p, 'Shoot', 1, 10, false, '🔫');
-                    html += buildWeaponBtn(p, 'Grenade', 3, 20, false, '💣');
-                    html += buildWeaponBtn(p, 'Heal', 7, 10, true, '❤️');
-                    html += buildWeaponBtn(p, 'Airstrike', 10, 30, false, '✈️');
-                    html += buildWeaponBtn(p, 'Bunker Buster', 20, 50, false, '🚀');
-                    html += `</div>`;
+                // Only show Arsenal to the CURRENT active player
+                if (p.isAlive && p.id === currentPlayerIndex) {
+                    div.classList.add('active-turn'); // Golden highlight
+                    
+                    if (!targetingMode) {
+                        html += `<div class="arsenal">`;
+                        html += buildWeaponBtn(p, 'Shoot', 1, 10, false, '🔫');
+                        html += buildWeaponBtn(p, 'Grenade', 3, 20, false, '💣');
+                        html += buildWeaponBtn(p, 'Heal', 7, 10, true, '❤️');
+                        html += buildWeaponBtn(p, 'Airstrike', 10, 30, false, '✈️');
+                        html += buildWeaponBtn(p, 'Bunker Buster', 20, 50, false, '🚀');
+                        html += `<button class="weapon-btn pass can-afford" onclick="logAction('⏳ <b>${p.name}</b> saved their ammo.'); endTurn()">Pass ⏳</button>`;
+                        html += `</div>`;
+                    }
                 }
 
                 div.innerHTML = html;
-                if (p.team === 'Red') rosterA.appendChild(div);
-                else rosterB.appendChild(div);
+                if (p.team === 'Red') rosterA.appendChild(div); else rosterB.appendChild(div);
             });
         }
 
@@ -309,8 +336,7 @@
         function logAction(text) {
             const logBox = document.getElementById('action-log');
             const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = text;
+            entry.className = 'log-entry'; entry.innerHTML = text;
             logBox.prepend(entry);
         }
 
@@ -320,11 +346,13 @@
 
             if (redAlive === 0 || blueAlive === 0) {
                 gameActive = false;
-                document.getElementById('deal-btn').style.display = 'none';
+                document.getElementById('game-status').style.display = 'none';
+                document.getElementById('cancel-hint').style.display = 'none';
                 document.getElementById('restart-btn').style.display = 'block';
                 
                 let winner = redAlive > 0 ? "TEAM RED" : "TEAM BLUE";
                 logAction(`<h2>🏆 ${winner} WINS THE WAR! 🏆</h2>`);
+                renderBattlefield(); // Renders one last time to remove UI
             }
         }
     </script>
