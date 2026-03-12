@@ -3,28 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Time Pass: Tactical War</title>
+    <title>Time Pass: Tactical Desert War</title>
     <style>
         body {
-            margin: 0; background-color: #1a1a1d; color: #fff;
+            margin: 0; 
+            color: #fff;
             font-family: 'Courier New', Courier, monospace;
             display: flex; flex-direction: column; align-items: center;
             min-height: 100vh; padding: 20px; box-sizing: border-box;
             user-select: none; overflow-x: hidden;
+            
+            /* =========================================
+               🏜️ DESERT WAR BACKGROUND CREATION 🏜️
+               ========================================= */
+            /* Dark dusky sky fading to distant smoke/sand and then sandy ground */
+            background: 
+                linear-gradient(to bottom, #1a1a1d 0%, #1a1a1d 40%, rgba(139, 69, 19, 0.5) 60%, #c19a6b 100%),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="noise" opacity="0.1"/></svg>'); /* Slight noise for sand texture */
+            background-color: #c19a6b; /* Base sand color fallback */
+            background-size: cover;
+            background-attachment: fixed;
         }
 
-        h1 { margin: 0 0 10px 0; font-size: 2rem; color: #f1c40f; text-transform: uppercase; text-align: center; }
+        /* Adding distant drifting smoke particles via pseudo-element */
+        body::before {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 60%;
+            background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0) 50%),
+                        radial-gradient(circle at 90% 30%, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0) 40%),
+                        radial-gradient(circle at 50% 100%, rgba(139, 69, 19, 0.3) 0%, rgba(0,0,0,0) 60%);
+            pointer-events: none; z-index: -1; animation: drift 20s infinite linear;
+        }
+
+        @keyframes drift { 0% { background-position: 0 0; } 100% { background-position: 100px -100px; } }
+
+        h1 { margin: 0 0 10px 0; font-size: 2rem; color: #d4a017; text-transform: uppercase; text-align: center; text-shadow: 2px 2px 4px #000; }
         
         #setup-screen, #name-setup-screen, #game-screen {
-            display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 800px;
+            display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 800px; z-index: 1;
         }
 
         #name-setup-screen, #game-screen { display: none; }
 
-        .setup-box { background: #2c3e50; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px; width: 100%; max-width: 400px; }
+        .setup-box { background: rgba(44, 62, 80, 0.9); padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px #000; border: 1px solid #c19a6b; }
 
         input[type="number"], input[type="text"] {
-            font-size: 1.2rem; padding: 10px; border-radius: 5px; border: none; margin: 5px; text-align: center; width: 80%;
+            font-size: 1.2rem; padding: 10px; border-radius: 5px; border: 1px solid #c19a6b; margin: 5px; text-align: center; width: 80%; background: #1a1a1d; color: #fff;
         }
 
         button {
@@ -37,37 +60,38 @@
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
         #game-status {
-            background: #f1c40f; color: #000; font-size: 1.5rem; width: 100%; 
+            background: rgba(212, 160, 23, 0.9); color: #000; font-size: 1.5rem; width: 100%; 
             text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;
-            box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); border: 2px solid #fff;
         }
 
         #cancel-hint {
             background: #e74c3c; color: #fff; font-size: 1.2rem; width: 100%; 
             text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; 
             font-weight: bold; cursor: pointer; display: none;
-            animation: pulse 1s infinite;
+            animation: pulse 1s infinite; box-shadow: 0 0 10px #e74c3c;
         }
 
         #battlefield { display: flex; justify-content: space-between; width: 100%; gap: 10px; }
 
         .team {
-            flex: 1; background: #2c3e50; padding: 10px; border-radius: 8px;
-            display: flex; flex-direction: column; gap: 10px;
+            flex: 1; background: rgba(44, 62, 80, 0.85); padding: 10px; border-radius: 8px;
+            display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.2);
         }
 
-        .team-title { text-align: center; font-weight: bold; font-size: 1.2rem; margin-bottom: 5px; }
+        .team-title { text-align: center; font-weight: bold; font-size: 1.2rem; margin-bottom: 5px; text-transform: uppercase; }
         .team-a .team-title { color: #ff7675; text-shadow: 0 0 5px #ff7675; }
         .team-b .team-title { color: #74b9ff; text-shadow: 0 0 5px #74b9ff; }
 
         .player {
-            background: #34495e; padding: 10px; border-radius: 5px;
+            background: rgba(52, 73, 94, 0.9); padding: 10px; border-radius: 5px;
             display: flex; flex-direction: column; gap: 5px; transition: 0.3s; position: relative;
+            border: 1px solid transparent;
         }
 
         .player.active-turn {
-            border: 2px solid #f1c40f; transform: scale(1.03);
-            box-shadow: 0 0 20px rgba(241, 196, 15, 0.6); z-index: 10;
+            border: 2px solid #d4a017; transform: scale(1.03);
+            box-shadow: 0 0 20px rgba(212, 160, 23, 0.6); z-index: 10;
         }
 
         .player.targetable { border: 2px dashed #e74c3c; cursor: crosshair; animation: pulse 1s infinite; }
@@ -75,7 +99,7 @@
 
         .player-header { display: flex; justify-content: space-between; align-items: center; }
         .player-name { font-weight: bold; font-size: 1.1rem; }
-        .bullet-count { font-size: 1.2rem; color: #f1c40f; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+        .oil-count { font-size: 1.2rem; color: #d4a017; font-weight: bold; text-shadow: 1px 1px 2px #000; }
 
         .health-bar-bg { width: 100%; background: #222; height: 14px; border-radius: 10px; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
         .health-bar-fill { height: 100%; background: #2ecc71; width: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s; }
@@ -102,7 +126,7 @@
             box-shadow: inset 0 0 10px #000;
         }
         .log-entry { margin-bottom: 8px; border-bottom: 1px dashed #333; padding-bottom: 5px; animation: slideIn 0.3s ease-out; }
-        .log-round { color: #f1c40f; margin-top: 15px; font-size: 1.1rem; text-shadow: 0 0 5px #f1c40f; }
+        .log-round { color: #d4a017; margin-top: 15px; font-size: 1.1rem; text-shadow: 0 0 5px #d4a017; }
 
         /* =========================================
            ✨ VISUAL EFFECTS CSS ✨
@@ -170,7 +194,7 @@
 </head>
 <body>
 
-    <h1>Tactical Turn War</h1>
+    <h1>Tactical Desert War</h1>
 
     <div id="setup-screen">
         <div class="setup-box">
@@ -258,10 +282,11 @@
             if (!gameActive) return;
             let p = players[currentPlayerIndex];
             
+            // Note: We keep "bullets" as the internal variable name but use "Oils" in UI
             p.bullets += 1;
             
             document.getElementById('game-status').innerHTML = `🎯 ${p.name}'s Turn! Choose an Action.`;
-            logAction(`➡️ <b>${p.name}'s Turn!</b> Gained 1 ammo (Total: ${p.bullets}).`);
+            logAction(`➡️ <b>${p.name}'s Turn!</b> Gained 1 Oil (Total: ${p.bullets}).`);
             renderBattlefield();
         }
 
@@ -272,8 +297,9 @@
             if (isHeal) {
                 shooter.bullets -= cost;
                 shooter.health = Math.min(100, shooter.health + damage);
-                logAction(`🟢 <b>${shooter.name}</b> healed 10% health!`);
+                logAction(`🟢 <b>${shooter.name}</b> used ${cost} Oils to heal 10% health!`);
                 
+                // Trigger Visual Effect for Healing
                 spawnVFX(shooterId, 'Heal', damage);
                 
                 setTimeout(endTurn, 600); // Slight delay so player sees the heal pop
@@ -302,7 +328,7 @@
                 target.health = 0; target.isAlive = false; target.bullets = 0;
             }
 
-            logAction(`💥 <b>${shooter.name}</b> blasted <b>${target.name}</b> with a ${targetingMode.weaponName} for ${targetingMode.damage}% damage!`);
+            logAction(`💥 <b>${shooter.name}</b> used <b>${targetingMode.weaponName}</b> (${targetingMode.cost} Oils) on <b>${target.name}</b> causing ${targetingMode.damage}% damage!`);
             if (!target.isAlive) logAction(`☠️ <b>${target.name} is ELIMINATED!</b>`);
 
             cancelTargeting(false); 
@@ -316,46 +342,54 @@
             renderBattlefield();
         }
 
+        // --- VISUAL EFFECTS SYSTEM ---
         function spawnVFX(playerId, weaponType, amount) {
             let targetNode = document.getElementById(`player-node-${playerId}`);
             if (!targetNode) return;
             
+            // Get screen coordinates of the target player's box
             let rect = targetNode.getBoundingClientRect();
             let x = rect.left + (rect.width / 2);
             let y = rect.top + (rect.height / 2);
 
+            // 1. Trigger Screen Shake based on requested damages
             let body = document.body;
             body.classList.remove('shake-mild', 'shake-intense');
             void body.offsetWidth; // Force CSS reflow to restart animation
-            if (amount >= 30 && weaponType !== 'Heal') body.classList.add('shake-intense');
+            if (amount >= 15 && weaponType !== 'Heal') body.classList.add('shake-intense');
             else if (weaponType !== 'Heal') body.classList.add('shake-mild');
 
+            // 2. Create Floating Container
             let fx = document.createElement('div');
             fx.className = 'fx-container';
             fx.style.left = x + 'px';
             fx.style.top = y + 'px';
             
+            // 3. Select Emoji/Sprite based on weapon
             let sprite = document.createElement('div');
             sprite.className = 'fx-sprite';
             if (weaponType === 'Heal') sprite.innerText = '✨💚✨';
             else if (weaponType === 'Grenade') sprite.innerText = '💥💨';
-            else if (weaponType === 'Airstrike') sprite.innerText = '💣🔥💥';
-            else if (weaponType === 'Bunker Buster') sprite.innerText = '☢️🔥🌋';
-            else sprite.innerText = '💥'; 
+            else if (weaponType === 'Airstrike') sprite.innerText = '💣✈️🔥';
+            else if (weaponType === 'Bunker Buster') sprite.innerText = '🚀☢️🌋';
+            else sprite.innerText = '💥🔫'; // Base Shoot
             
             fx.appendChild(sprite);
 
+            // 4. Create Floating Damage/Heal Number
             let text = document.createElement('div');
             text.className = weaponType === 'Heal' ? 'heal-text' : 'dmg-text';
-            text.innerText = weaponType === 'Heal' ? `+${amount}` : `-${amount}`;
+            text.innerText = weaponType === 'Heal' ? `+${amount}%` : `-${amount}%`;
             fx.appendChild(text);
 
+            // 5. Inject to screen and clean up after animation finishes
             document.body.appendChild(fx);
             setTimeout(() => { 
                 fx.remove(); 
                 body.classList.remove('shake-mild', 'shake-intense'); 
             }, 1200);
         }
+        // ----------------------
 
         function cancelTargeting(render = true) {
             targetingMode = null;
@@ -392,7 +426,7 @@
             players.forEach(p => {
                 let div = document.createElement('div');
                 div.className = `player ${!p.isAlive ? 'dead' : ''}`;
-                div.id = `player-node-${p.id}`; 
+                div.id = `player-node-${p.id}`; // Crucial for mapping VFX coordinates
                 
                 if (targetingMode && p.isAlive && p.team !== players.find(s => s.id === targetingMode.shooterId).team) {
                     div.classList.add('targetable');
@@ -403,7 +437,7 @@
                 let html = `
                     <div class="player-header">
                         <span class="player-name">${p.name}</span>
-                        <span class="bullet-count">🪙 ${p.bullets}</span>
+                        <span class="oil-count">🛢️ ${p.bullets}</span>
                     </div>
                     <div class="health-bar-bg"><div class="health-bar-fill" style="width: ${p.health}%; background: ${barColor};"></div></div>
                     <div style="font-size: 0.8rem; text-align: right; margin-top: 2px;">${p.health}% HP</div>
@@ -414,12 +448,13 @@
                     
                     if (!targetingMode) {
                         html += `<div class="arsenal">`;
-                        html += buildWeaponBtn(p, 'Shoot', 1, 10, false, '🔫');
-                        html += buildWeaponBtn(p, 'Grenade', 3, 20, false, '💣');
+                        // Update Weapon Stats here (Name, Cost, Dmg/Heal, isHeal, Icon)
+                        html += buildWeaponBtn(p, 'Shoot', 1, 5, false, '🔫');
+                        html += buildWeaponBtn(p, 'Grenade', 3, 7, false, '💣');
                         html += buildWeaponBtn(p, 'Heal', 7, 10, true, '❤️');
-                        html += buildWeaponBtn(p, 'Airstrike', 10, 30, false, '✈️');
-                        html += buildWeaponBtn(p, 'Bunker Buster', 20, 50, false, '🚀');
-                        html += `<button class="weapon-btn pass can-afford" onclick="logAction('⏳ <b>${p.name}</b> saved their ammo.'); endTurn()" style="flex: 100%; margin-top: 5px;">Pass & Save Ammo ⏳</button>`;
+                        html += buildWeaponBtn(p, 'Airstrike', 10, 15, false, '✈️');
+                        html += buildWeaponBtn(p, 'Bunker Buster', 20, 17, false, '🚀');
+                        html += `<button class="weapon-btn pass can-afford" onclick="logAction('⏳ <b>${p.name}</b> saved their Oils.'); endTurn()" style="flex: 100%; margin-top: 5px;">Pass & Save Oils ⏳</button>`;
                         html += `</div>`;
                     }
                 }
@@ -433,7 +468,9 @@
             let canAfford = player.bullets >= cost;
             let classStr = `weapon-btn ${canAfford ? 'can-afford' : ''} ${isHeal ? 'heal' : ''}`;
             let clickAttr = canAfford ? `onclick="prepWeapon(${player.id}, '${name}', ${cost}, ${effect}, ${isHeal})"` : 'disabled';
-            return `<button class="${classStr}" ${clickAttr} title="${name}: ${cost} ammo">${cost} ${icon}</button>`;
+            // Update tooltip text to mention "oils" and percentage
+            let tooltipText = isHeal ? `${name}: ${cost} oils (+${effect}% HP)` : `${name}: ${cost} oils (${effect}% dmg)`;
+            return `<button class="${classStr}" ${clickAttr} title="${tooltipText}">${cost} ${icon}</button>`;
         }
 
         function logAction(text) {
@@ -454,7 +491,7 @@
                 document.getElementById('restart-btn').style.display = 'block';
                 
                 let winner = redAlive > 0 ? "TEAM RED" : "TEAM BLUE";
-                logAction(`<h2 style="text-align:center; color:#fff; text-shadow:0 0 10px #f1c40f;">🏆 ${winner} WINS THE WAR! 🏆</h2>`);
+                logAction(`<h2 style="text-align:center; color:#fff; text-shadow:0 0 10px #d4a017;">🏆 ${winner} WINS THE WAR! 🏆</h2>`);
                 renderBattlefield();
             }
         }
