@@ -2,529 +2,392 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Time Pass: Tactical Desert War</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cy Planet: Strategic Card Battle</title>
     <style>
+        :root {
+            --primary: #00ffcc;
+            --secondary: #ff00ff;
+            --bg-color: #0b0f19;
+            --card-bg: #162032;
+            --text: #e2e8f0;
+        }
+
         body {
-            margin: 0; 
-            color: #fff;
-            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 20px;
             display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh; padding: 20px; box-sizing: border-box;
-            user-select: none; overflow-x: hidden;
-            
-            /* =========================================
-               🏜️ DESERT WAR BACKGROUND CREATION 🏜️
-               ========================================= */
-            background: 
-                linear-gradient(to bottom, #1a1a1d 0%, #1a1a1d 40%, rgba(139, 69, 19, 0.5) 60%, #c19a6b 100%),
-                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="noise" opacity="0.1"/></svg>'); 
-            background-color: #c19a6b; 
-            background-size: cover;
-            background-attachment: fixed;
+            min-height: 100vh; text-align: center;
         }
 
-        body::before {
-            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 60%;
-            background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0) 50%),
-                        radial-gradient(circle at 90% 30%, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0) 40%),
-                        radial-gradient(circle at 50% 100%, rgba(139, 69, 19, 0.3) 0%, rgba(0,0,0,0) 60%);
-            pointer-events: none; z-index: -1; animation: drift 20s infinite linear;
-        }
-
-        @keyframes drift { 0% { background-position: 0 0; } 100% { background-position: 100px -100px; } }
-
-        h1 { margin: 0 0 10px 0; font-size: 2rem; color: #d4a017; text-transform: uppercase; text-align: center; text-shadow: 2px 2px 4px #000; }
+        h1 { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
         
-        #setup-screen, #name-setup-screen, #game-screen {
-            display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 800px; z-index: 1;
-        }
-
-        #name-setup-screen, #game-screen { display: none; }
-
-        .setup-box { background: rgba(44, 62, 80, 0.9); padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px #000; border: 1px solid #c19a6b; }
-
-        input[type="number"], input[type="text"] {
-            font-size: 1.2rem; padding: 10px; border-radius: 5px; border: 1px solid #c19a6b; margin: 5px; text-align: center; width: 80%; background: #1a1a1d; color: #fff;
-        }
-
         button {
-            background: #e74c3c; color: white; border: none; padding: 12px 24px;
-            font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: inherit; margin-top: 10px; text-transform: uppercase;
-            transition: all 0.2s ease;
+            background-color: var(--primary); color: #000;
+            border: none; padding: 12px 24px; font-size: 1.1rem;
+            font-weight: bold; border-radius: 8px; cursor: pointer;
+            transition: 0.2s; margin: 10px;
         }
-        button:hover { background: #c0392b; }
-        button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        button:hover { background-color: #fff; box-shadow: 0 0 15px var(--primary); }
+        button:disabled { background-color: #555; color: #888; cursor: not-allowed; box-shadow: none; }
 
-        #game-status {
-            background: rgba(212, 160, 23, 0.9); color: #000; font-size: 1.5rem; width: 100%; 
-            text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5); border: 2px solid #fff;
-        }
-
-        #cancel-hint {
-            background: #e74c3c; color: #fff; font-size: 1.2rem; width: 100%; 
-            text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; 
-            font-weight: bold; cursor: pointer; display: none;
-            animation: pulse 1s infinite; box-shadow: 0 0 10px #e74c3c;
+        input {
+            padding: 10px; font-size: 1.1rem; border-radius: 5px;
+            border: 1px solid var(--primary); background: #1e293b; color: white;
+            margin: 5px; text-align: center;
         }
 
-        #battlefield { display: flex; justify-content: space-between; width: 100%; gap: 10px; }
+        /* Screens */
+        #loading-screen, #setup-screen, #pass-screen, #play-screen, #result-screen { display: none; width: 100%; max-width: 900px; }
+        .active-screen { display: flex !important; flex-direction: column; align-items: center; }
 
-        .team {
-            flex: 1; background: rgba(44, 62, 80, 0.85); padding: 10px; border-radius: 8px;
-            display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.2);
+        /* Deck View Area */
+        .deck-container {
+            display: flex; gap: 15px; overflow-x: auto; padding: 20px 10px; width: 100%;
+            background: rgba(0,0,0,0.5); border-radius: 10px; margin-top: 10px;
+            border: 1px solid #334155;
         }
+        .deck-container::-webkit-scrollbar { height: 10px; }
+        .deck-container::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 5px; }
 
-        .team-title { text-align: center; font-weight: bold; font-size: 1.2rem; margin-bottom: 5px; text-transform: uppercase; }
-        .team-a .team-title { color: #ff7675; text-shadow: 0 0 5px #ff7675; }
-        .team-b .team-title { color: #74b9ff; text-shadow: 0 0 5px #74b9ff; }
-
-        .player {
-            background: rgba(52, 73, 94, 0.9); padding: 10px; border-radius: 5px;
-            display: flex; flex-direction: column; gap: 5px; transition: 0.3s; position: relative;
-            border: 1px solid transparent;
+        /* Card Styles */
+        .card {
+            background-color: var(--card-bg); width: 220px; min-width: 220px;
+            border-radius: 10px; border: 2px solid #334155;
+            padding: 15px; cursor: pointer; transition: 0.3s; text-align: left;
+            position: relative;
         }
-
-        .player.active-turn {
-            border: 2px solid #d4a017; transform: scale(1.03);
-            box-shadow: 0 0 20px rgba(212, 160, 23, 0.6); z-index: 10;
-        }
-
-        .player.targetable { border: 2px dashed #e74c3c; cursor: crosshair; animation: pulse 1s infinite; }
-        .player.targetable:hover { background: #c0392b; transform: scale(1.05); }
-
-        .player-header { display: flex; justify-content: space-between; align-items: center; }
-        .player-name { font-weight: bold; font-size: 1.1rem; }
-        .oil-count { font-size: 1.2rem; color: #d4a017; font-weight: bold; text-shadow: 1px 1px 2px #000; }
-
-        .health-bar-bg { width: 100%; background: #222; height: 14px; border-radius: 10px; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
-        .health-bar-fill { height: 100%; background: #2ecc71; width: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s; }
-
-        .arsenal { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+        .card:hover { border-color: var(--primary); transform: translateY(-5px); }
+        .card.selected { border-color: var(--secondary); box-shadow: 0 0 15px var(--secondary); transform: scale(1.05); }
         
-        .weapon-btn {
-            flex: 1; background: #555; color: white; border: none; padding: 6px; font-size: 0.85rem;
-            border-radius: 4px; cursor: pointer; text-align: center; font-family: inherit; font-weight: bold; margin-top: 0;
-            box-shadow: 0 2px 0 #222; transition: all 0.1s;
-        }
-        .weapon-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; transform: translateY(2px); }
-        .weapon-btn.can-afford { background: #3498db; box-shadow: 0 2px 0 #2980b9; }
-        .weapon-btn.can-afford:hover { background: #2980b9; }
-        .weapon-btn.can-afford:active { transform: translateY(2px); box-shadow: none; }
-        .weapon-btn.heal.can-afford { background: #2ecc71; box-shadow: 0 2px 0 #27ae60; }
-        .weapon-btn.heal.can-afford:hover { background: #27ae60; }
-        .weapon-btn.pass { background: #95a5a6; box-shadow: 0 2px 0 #7f8c8d; }
+        .card-title { font-size: 1.1rem; font-weight: bold; color: #fff; margin-bottom: 5px; border-bottom: 1px solid #334; padding-bottom: 5px;}
+        .stat-line { display: flex; justify-content: space-between; font-size: 0.9rem; margin: 4px 0; background: #1e293b; padding: 4px 8px; border-radius: 4px; }
+        .stat-line.highlight { background: var(--primary); color: #000; font-weight: bold; }
 
-        #action-log {
-            background: rgba(0, 0, 0, 0.7); width: 100%; padding: 15px; box-sizing: border-box;
-            border-radius: 8px; margin-top: 20px; font-size: 0.95rem; color: #00ff00;
-            height: 180px; overflow-y: auto; border: 1px solid #333; line-height: 1.5;
-            box-shadow: inset 0 0 10px #000;
+        /* Play Area */
+        .table-area {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-top: 20px;
+            background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; width: 100%; min-height: 150px;
         }
-        .log-entry { margin-bottom: 8px; border-bottom: 1px dashed #333; padding-bottom: 5px; animation: slideIn 0.3s ease-out; }
-        .log-round { color: #d4a017; margin-top: 15px; font-size: 1.1rem; text-shadow: 0 0 5px #d4a017; }
+        .table-card { transform: scale(0.9); pointer-events: none; }
 
-        /* =========================================
-           📊 WEAPON CHART STYLING 📊
-           ========================================= */
-        #weapon-chart {
-            background: rgba(44, 62, 80, 0.9); padding: 15px; border-radius: 8px;
-            margin-top: 20px; width: 100%; box-sizing: border-box;
-            border: 1px solid #c19a6b; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-        #weapon-chart h3 { margin: 0 0 10px 0; color: #d4a017; }
-        #weapon-chart table { width: 100%; border-collapse: collapse; color: #fff; font-size: 0.9rem; }
-        #weapon-chart th, #weapon-chart td { border: 1px solid rgba(255,255,255,0.2); padding: 6px; }
-        #weapon-chart th { background: #34495e; color: #f1c40f; }
+        /* Action Panel */
+        #action-panel { margin-top: 20px; padding: 20px; border: 1px dashed var(--primary); border-radius: 10px; width: 100%; display: none;}
+        .stat-btn { background: #1e293b; color: white; border: 1px solid var(--primary); margin: 5px; padding: 10px 15px;}
+        .stat-btn:hover { background: var(--primary); color: black; }
 
-        /* =========================================
-           ✨ VISUAL EFFECTS CSS ✨
-           ========================================= */
-        
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
-        }
-        .shake-intense { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-        .shake-mild { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
-
-        .fx-container { 
-            position: fixed; pointer-events: none; z-index: 9999; 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            transform: translate(-50%, -50%); 
-        }
-        
-        @keyframes float-up {
-            0% { opacity: 1; transform: translateY(0) scale(0.5); }
-            20% { transform: translateY(-10px) scale(1.5); }
-            100% { opacity: 0; transform: translateY(-60px) scale(1); }
-        }
-        .dmg-text { color: #ff4757; font-weight: 900; font-size: 2.5rem; text-shadow: 2px 2px 0 #000, -1px -1px 0 #fff; animation: float-up 1.2s ease-out forwards; z-index: 2;}
-        .heal-text { color: #2ecc71; font-weight: 900; font-size: 2.5rem; text-shadow: 2px 2px 0 #000, -1px -1px 0 #fff; animation: float-up 1.2s ease-out forwards; z-index: 2;}
-
-        @keyframes explode {
-            0% { opacity: 1; transform: scale(0.2) rotate(0deg); }
-            40% { opacity: 1; transform: scale(2.5) rotate(15deg); }
-            100% { opacity: 0; transform: scale(3) rotate(30deg); }
-        }
-        .fx-sprite { font-size: 4rem; animation: explode 0.6s ease-out forwards; filter: drop-shadow(0 0 10px #ff6b81); position: absolute; z-index: 1;}
-
-        @keyframes smoke-rise {
-            0% { opacity: 0.8; transform: translateY(0) scale(1); }
-            100% { opacity: 0; transform: translateY(-40px) scale(2); }
-        }
-        .player.dead { 
-            opacity: 0.4; filter: grayscale(100%) brightness(50%); 
-            pointer-events: none; border: none; box-shadow: inset 0 0 20px #000; 
-            overflow: visible;
-        }
-        .player.dead::before {
-            content: '☠️'; position: absolute; font-size: 3rem; 
-            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; opacity: 0.8;
-        }
-        .player.dead::after {
-            content: '💨'; position: absolute; top: -10px; left: 45%; font-size: 1.5rem;
-            animation: smoke-rise 2s infinite ease-out; opacity: 0.6; pointer-events: none; z-index: 6;
-        }
-
+        .status-box { background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 10px; width: 100%; }
+        .winner-tag { color: var(--secondary); font-weight: bold; font-size: 1.5rem; text-shadow: 0 0 10px var(--secondary); margin-top:10px;}
     </style>
 </head>
 <body>
 
-    <h1>Tactical Desert War</h1>
+    <h1>CY PLANET: STRATEGIC BATTLE</h1>
+
+    <div id="loading-screen" class="active-screen">
+        <h2>Loading Card Data...</h2>
+        <p>Fetching students.json...</p>
+    </div>
 
     <div id="setup-screen">
-        <div class="setup-box">
-            <h2>How many soldiers?</h2>
-            <input type="number" id="player-count" value="4" min="2" max="10" step="2">
-            <br>
-            <button onclick="goToNameSetup()">Next</button>
-        </div>
+        <h3>How many players? (2-6)</h3>
+        <input type="number" id="num-players" min="2" max="6" value="2">
+        <button onclick="generateNameInputs()">Next</button>
+        <div id="name-inputs" style="margin-top: 20px; display: flex; flex-direction: column;"></div>
     </div>
 
-    <div id="name-setup-screen">
-        <div class="setup-box" style="max-width: 600px;">
-            <h2 style="color: #ff7675;">Team Red</h2>
-            <div id="red-names"></div>
-            <h2 style="color: #74b9ff; margin-top:20px;">Team Blue</h2>
-            <div id="blue-names"></div>
-            <button onclick="startGame()">ENTER BATTLEFIELD</button>
-        </div>
+    <div id="pass-screen">
+        <h2 style="font-size: 2.5rem; color: var(--secondary);">STOP! 🛑</h2>
+        <h3 id="pass-msg" style="font-size: 1.5rem;">Pass the device to [Player]</h3>
+        <p>Make sure no one else is looking at the screen!</p>
+        <button onclick="showPlayScreen()" style="padding: 20px 40px; font-size: 1.5rem; margin-top:30px;">I am Ready</button>
     </div>
 
-    <div id="game-screen">
-        <div id="game-status">Loading...</div>
-        <div id="cancel-hint" onclick="cancelTargeting()">⚠️ SELECT ENEMY TARGET ⚠️<br><small>(Click here to cancel)</small></div>
+    <div id="play-screen">
+        <div class="status-box">
+            <h2 id="current-player-name" style="margin:0; color: var(--primary);">Player Turn</h2>
+            <p id="target-stat-msg" style="color: var(--secondary); font-weight: bold; font-size: 1.2rem; margin-top:5px;"></p>
+        </div>
+
+        <h3>Cards on the Table:</h3>
+        <div class="table-area" id="current-table-area"></div>
         
-        <div id="battlefield">
-            <div class="team team-a" id="team-a-container">
-                <div class="team-title">TEAM RED</div>
-                <div id="team-a-roster"></div>
+        <h3>Your Deck: (Select 1 Card to play)</h3>
+        <div class="deck-container" id="player-deck-container"></div>
+
+        <div id="action-panel">
+            <div id="leader-actions">
+                <h4>Choose a Stat to challenge others:</h4>
+                <button class="stat-btn" onclick="playCardAsLeader('strength')">Strength</button>
+                <button class="stat-btn" onclick="playCardAsLeader('height')">Height</button>
+                <button class="stat-btn" onclick="playCardAsLeader('weight')">Weight</button>
+                <button class="stat-btn" onclick="playCardAsLeader('cgpa')">CGPA</button>
+                <button class="stat-btn" onclick="playCardAsLeader('absent_rate')">Absent Rate</button>
             </div>
-            <div class="team team-b" id="team-b-container">
-                <div class="team-title">TEAM BLUE</div>
-                <div id="team-b-roster"></div>
+            <div id="follower-actions" style="display:none;">
+                <button onclick="playCardAsFollower()" style="padding: 15px 30px; font-size: 1.2rem;">Play Selected Card</button>
             </div>
         </div>
+    </div>
 
-        <div id="action-log"></div>
-
-        <div id="weapon-chart">
-            <h3>Weapon Arsenal Info</h3>
-            <table>
-                <tr>
-                    <th>Icon</th>
-                    <th>Action</th>
-                    <th>Cost (Oils)</th>
-                    <th>Effect</th>
-                </tr>
-                <tr><td>🔫</td><td>Shoot</td><td>1</td><td>5% Damage</td></tr>
-                <tr><td>💣</td><td>Grenade</td><td>3</td><td>7% Damage</td></tr>
-                <tr><td>❤️</td><td>Heal</td><td>7</td><td>+10% HP</td></tr>
-                <tr><td>✈️</td><td>Airstrike</td><td>10</td><td>15% Damage</td></tr>
-                <tr><td>🚀</td><td>Bunker Buster</td><td>20</td><td>17% Damage</td></tr>
-            </table>
-        </div>
-
-        <button id="restart-btn" style="display:none; width:100%; padding: 20px; font-size: 1.5rem;" onclick="location.reload()">PLAY AGAIN</button>
+    <div id="result-screen">
+        <h2 id="round-winner-msg" style="font-size: 2rem;"></h2>
+        <p id="round-stat-msg"></p>
+        
+        <div class="table-area" id="result-table-area"></div>
+        
+        <button onclick="nextRound()" style="margin-top: 30px; font-size: 1.3rem;">Start Next Round</button>
     </div>
 
     <script>
+        let allCards = [];
         let players = [];
-        let gameActive = false;
-        let currentPlayerIndex = 0;
-        let targetingMode = null; 
-        let initialPlayerCount = 0;
+        let tableCards = []; 
+        let turnQueue = [];  
+        let activeStat = null; 
+        let pot = []; 
+        let selectedCardIndex = null;
 
-        // NEW FUNCTION: Handles writing output to the action log div
-        function logAction(message) {
-            let logContainer = document.getElementById('action-log');
-            let newEntry = document.createElement('div');
-            newEntry.className = 'log-entry';
-            newEntry.innerHTML = message;
-            logContainer.appendChild(newEntry);
-            logContainer.scrollTop = logContainer.scrollHeight; // Auto-scroll
+        const statLabels = {
+            "strength": "Strength", "height": "Height",
+            "weight": "Weight", "cgpa": "CGPA", "absent_rate": "Absent Rate"
+        };
+
+        // --- 1. Load JSON Data ---
+        window.onload = async function() {
+            try {
+                const response = await fetch('students.json');
+                if (!response.ok) throw new Error("File not found");
+                const data = await response.json();
+                
+                allCards = Object.keys(data).map(key => {
+                    return { rollno: parseInt(key), ...data[key] };
+                });
+
+                switchScreen('setup-screen');
+            } catch (error) {
+                document.getElementById('loading-screen').innerHTML = `
+                    <h2 style="color:red;">Error Loading students.json!</h2>
+                    <p>Make sure you are running a <b>Local Web Server</b> (like Live Server in VS Code) and that students.json is in the same folder.</p>
+                `;
+                console.error(error);
+            }
+        };
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('body > div').forEach(div => div.classList.remove('active-screen'));
+            document.getElementById(screenId).classList.add('active-screen');
         }
 
-        function goToNameSetup() {
-            let count = parseInt(document.getElementById('player-count').value);
-            if (count < 2 || count % 2 !== 0) {
-                alert("Please enter an even number of players (2, 4, 6...)."); return;
-            }
-            initialPlayerCount = count; // Save for sudden death check
-            document.getElementById('setup-screen').style.display = 'none';
-            document.getElementById('name-setup-screen').style.display = 'flex';
-            let redDiv = document.getElementById('red-names');
-            let blueDiv = document.getElementById('blue-names');
-            redDiv.innerHTML = ''; blueDiv.innerHTML = '';
-
+        // --- 2. Setup Game ---
+        function generateNameInputs() {
+            const count = parseInt(document.getElementById('num-players').value);
+            const container = document.getElementById('name-inputs');
+            container.innerHTML = '';
             for (let i = 0; i < count; i++) {
-                let input = document.createElement('input');
-                input.type = 'text'; input.id = `name-input-${i}`; input.value = `Player ${i + 1}`;
-                if (i < count / 2) redDiv.appendChild(input); else blueDiv.appendChild(input);
+                container.innerHTML += `<input type="text" id="p-name-${i}" placeholder="Player ${i+1} Name">`;
             }
+            container.innerHTML += `<button onclick="startGame()" style="margin-top:15px; background:var(--secondary)">DEAL CARDS</button>`;
         }
 
         function startGame() {
-            let count = parseInt(document.getElementById('player-count').value);
+            const count = parseInt(document.getElementById('num-players').value);
             players = [];
             for (let i = 0; i < count; i++) {
-                players.push({
-                    id: i, name: document.getElementById(`name-input-${i}`).value || `Player ${i+1}`,
-                    team: i < count / 2 ? 'Red' : 'Blue', health: 100, bullets: 0,
-                    isAlive: true
-                });
+                let name = document.getElementById(`p-name-${i}`).value || `Player ${i+1}`;
+                players.push({ id: i, name: name, deck: [] });
             }
-            document.getElementById('name-setup-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'flex';
-            gameActive = true;
-            
-            currentPlayerIndex = 0; 
-            logAction(`<div class="log-round">⚔️ <b>BATTLE BEGINS!</b> Strict turn order initiated.</div>`);
-            startTurn();
+
+            let deck = [...allCards].sort(() => Math.random() - 0.5);
+
+            let pIndex = 0;
+            while(deck.length > 0) {
+                players[pIndex].deck.push(deck.pop());
+                pIndex = (pIndex + 1) % players.length;
+            }
+
+            let firstLeader = players[Math.floor(Math.random() * players.length)].id;
+            startNewRound(firstLeader);
         }
 
-        function startTurn() {
-            if (!gameActive) return;
-            let p = players[currentPlayerIndex];
+        // --- 3. Round Logic ---
+        function startNewRound(leaderId) {
+            let alivePlayers = players.filter(p => p.deck.length > 0);
             
-            p.bullets += 1;
-            
-            document.getElementById('game-status').innerHTML = `🎯 ${p.name}'s Turn! Choose an Action.`;
-            logAction(`➡️ <b>${p.name}'s Turn!</b> Gained 1 Oil (Total: ${p.bullets}).`);
-            renderBattlefield();
-        }
-
-        function prepWeapon(shooterId, weaponName, cost, damage, isHeal) {
-            let shooter = players.find(p => p.id === shooterId);
-            if (shooter.bullets < cost) return;
-
-            if (isHeal) {
-                shooter.bullets -= cost;
-                shooter.health = Math.min(100, shooter.health + damage);
-                logAction(`🟢 <b>${shooter.name}</b> used ${cost} Oils to heal 10% health!`);
+            // NEW RULE: If we started with > 2 players and only 2 remain, end the game!
+            if (players.length > 2 && alivePlayers.length === 2) {
+                let p1 = alivePlayers[0];
+                let p2 = alivePlayers[1];
                 
-                spawnVFX(shooterId, 'Heal', damage);
-                
-                setTimeout(endTurn, 600); 
-                return;
-            }
-
-            targetingMode = { shooterId: shooterId, weaponName: weaponName, cost: cost, damage: damage };
-            
-            document.getElementById('game-status').style.display = 'none';
-            document.getElementById('cancel-hint').style.display = 'block';
-            renderBattlefield();
-        }
-
-        function executeAttack(targetId) {
-            if (!targetingMode) return;
-            let target = players.find(p => p.id === targetId);
-            let shooter = players.find(p => p.id === targetingMode.shooterId);
-
-            spawnVFX(targetId, targetingMode.weaponName, targetingMode.damage);
-
-            shooter.bullets -= targetingMode.cost;
-            target.health -= targetingMode.damage;
-            
-            if (target.health <= 0) {
-                target.health = 0; target.isAlive = false; target.bullets = 0;
-            }
-
-            logAction(`💥 <b>${shooter.name}</b> used <b>${targetingMode.weaponName}</b> (${targetingMode.cost} Oils) on <b>${target.name}</b> causing ${targetingMode.damage}% damage!`);
-            if (!target.isAlive) logAction(`☠️ <b>${target.name} is ELIMINATED!</b>`);
-
-            cancelTargeting(false); 
-            checkGameOver();
-            
-            if (gameActive) {
-                setTimeout(endTurn, 800); 
-            }
-            
-            renderBattlefield();
-        }
-
-        function spawnVFX(playerId, weaponType, amount) {
-            let targetNode = document.getElementById(`player-node-${playerId}`);
-            if (!targetNode) return;
-            
-            let rect = targetNode.getBoundingClientRect();
-            let x = rect.left + (rect.width / 2);
-            let y = rect.top + (rect.height / 2);
-
-            let body = document.body;
-            body.classList.remove('shake-mild', 'shake-intense');
-            void body.offsetWidth; 
-            if (amount >= 15 && weaponType !== 'Heal') body.classList.add('shake-intense');
-            else if (weaponType !== 'Heal') body.classList.add('shake-mild');
-
-            let fx = document.createElement('div');
-            fx.className = 'fx-container';
-            fx.style.left = x + 'px';
-            fx.style.top = y + 'px';
-            
-            let sprite = document.createElement('div');
-            sprite.className = 'fx-sprite';
-            if (weaponType === 'Heal') sprite.innerText = '✨💚✨';
-            else if (weaponType === 'Grenade') sprite.innerText = '💥💨';
-            else if (weaponType === 'Airstrike') sprite.innerText = '💣✈️🔥';
-            else if (weaponType === 'Bunker Buster') sprite.innerText = '🚀☢️🌋';
-            else sprite.innerText = '💥🔫'; 
-            
-            fx.appendChild(sprite);
-
-            let text = document.createElement('div');
-            text.className = weaponType === 'Heal' ? 'heal-text' : 'dmg-text';
-            text.innerText = weaponType === 'Heal' ? `+${amount}%` : `-${amount}%`;
-            fx.appendChild(text);
-
-            document.body.appendChild(fx);
-            setTimeout(() => { 
-                fx.remove(); 
-                body.classList.remove('shake-mild', 'shake-intense'); 
-            }, 1200);
-        }
-
-        function cancelTargeting(render = true) {
-            targetingMode = null;
-            document.getElementById('cancel-hint').style.display = 'none';
-            document.getElementById('game-status').style.display = 'block';
-            if (render) renderBattlefield();
-        }
-
-        function endTurn() {
-            if (!gameActive) return;
-
-            let startIndex = currentPlayerIndex;
-            let nextIndex = (currentPlayerIndex + 1) % players.length;
-            
-            while (!players[nextIndex].isAlive && nextIndex !== startIndex) {
-                nextIndex = (nextIndex + 1) % players.length;
-            }
-
-            if (nextIndex <= startIndex && players.filter(p => p.isAlive).length > 1) {
-                logAction(`<div class="log-round">🔄 <b>NEW ROUND!</b> Back to the top of the order!</div>`);
-            }
-
-            currentPlayerIndex = nextIndex;
-            startTurn();
-        }
-
-        function renderBattlefield() {
-            const rosterA = document.getElementById('team-a-roster');
-            const rosterB = document.getElementById('team-b-roster');
-            rosterA.innerHTML = ''; rosterB.innerHTML = '';
-
-            players.forEach(p => {
-                let div = document.createElement('div');
-                div.className = `player ${!p.isAlive ? 'dead' : ''}`;
-                div.id = `player-node-${p.id}`; 
-                
-                if (targetingMode && p.isAlive && p.team !== players.find(s => s.id === targetingMode.shooterId).team) {
-                    div.classList.add('targetable');
-                    div.onclick = () => executeAttack(p.id);
-                }
-
-                let barColor = p.health > 50 ? "#2ecc71" : p.health > 25 ? "#f1c40f" : "#e74c3c";
-                let html = `
-                    <div class="player-header">
-                        <span class="player-name">${p.name}</span>
-                        <span class="oil-count">🛢️ ${p.bullets}</span>
-                    </div>
-                    <div class="health-bar-bg"><div class="health-bar-fill" style="width: ${p.health}%; background: ${barColor};"></div></div>
-                    <div style="font-size: 0.8rem; text-align: right; margin-top: 2px;">${p.health}% HP</div>
-                `;
-
-                if (p.isAlive && p.id === currentPlayerIndex) {
-                    div.classList.add('active-turn'); 
-                    
-                    if (!targetingMode) {
-                        html += `<div class="arsenal">`;
-                        html += buildWeaponBtn(p, 'Shoot', 1, 5, false, '🔫');
-                        html += buildWeaponBtn(p, 'Grenade', 3, 7, false, '💣');
-                        html += buildWeaponBtn(p, 'Heal', 7, 10, true, '❤️');
-                        html += buildWeaponBtn(p, 'Airstrike', 10, 15, false, '✈️');
-                        html += buildWeaponBtn(p, 'Bunker Buster', 20, 17, false, '🚀');
-                        html += `<button class="weapon-btn pass can-afford" onclick="logAction('⏳ <b>${p.name}</b> saved their Oils.'); endTurn()" style="flex: 100%; margin-top: 5px;">Pass & Save Oils ⏳</button>`;
-                        html += `</div>`;
-                    }
-                }
-
-                div.innerHTML = html;
-                if (p.team === 'Red') rosterA.appendChild(div); else rosterB.appendChild(div);
-            });
-        }
-
-        function buildWeaponBtn(player, name, cost, effect, isHeal, icon) {
-            let canAfford = player.bullets >= cost;
-            let classStr = `weapon-btn ${canAfford ? 'can-afford' : ''} ${isHeal ? 'heal' : ''}`;
-            let clickAttr = canAfford ? `onclick="prepWeapon(${player.id}, '${name}', ${cost}, ${effect}, ${isHeal})"` : 'disabled';
-            let tooltipText = isHeal ? `${name}: ${cost} oils (+${effect}% HP)` : `${name}: ${cost} oils (${effect}% dmg)`;
-            return `<button class="${classStr}" ${clickAttr} title="${tooltipText}">${cost} ${icon}</button>`;
-        }
-
-        function triggerWin(winnerText, subtitleText) {
-            gameActive = false;
-            document.getElementById('game-status').style.display = 'none';
-            document.getElementById('cancel-hint').style.display = 'none';
-            document.getElementById('restart-btn').style.display = 'block';
-            
-            logAction(`<h2 style="text-align:center; color:#fff; text-shadow:0 0 10px #d4a017;">🏆 ${winnerText} 🏆<br><small style="font-size: 0.9rem;">${subtitleText}</small></h2>`);
-        }
-
-        function checkGameOver() {
-            let redAlive = players.filter(p => p.team === 'Red' && p.isAlive);
-            let blueAlive = players.filter(p => p.team === 'Blue' && p.isAlive);
-
-            // 1. Normal Win Condition
-            if (redAlive.length === 0 || blueAlive.length === 0) {
-                let winner = redAlive.length > 0 ? "TEAM RED WINS!" : "TEAM BLUE WINS!";
-                triggerWin(winner, "DOMINATING VICTORY!");
-                return;
-            }
-
-            // 2. Sudden Death Condition (1v1 Showdown)
-            if (initialPlayerCount > 2 && redAlive.length === 1 && blueAlive.length === 1) {
-                let redP = redAlive[0];
-                let blueP = blueAlive[0];
-                
-                if (redP.health > blueP.health) {
-                    triggerWin("TEAM RED WINS!", `SUDDEN DEATH: ${redP.name} survived with more Health!`);
-                } else if (blueP.health > redP.health) {
-                    triggerWin("TEAM BLUE WINS!", `SUDDEN DEATH: ${blueP.name} survived with more Health!`);
+                if (p1.deck.length > p2.deck.length) {
+                    alert(`🏆 GAME OVER! Only 2 players remain!\n\n${p1.name} WINS with ${p1.deck.length} cards! (${p2.name} had ${p2.deck.length} cards) 🏆`);
+                } else if (p2.deck.length > p1.deck.length) {
+                    alert(`🏆 GAME OVER! Only 2 players remain!\n\n${p2.name} WINS with ${p2.deck.length} cards! (${p1.name} had ${p1.deck.length} cards) 🏆`);
                 } else {
-                    triggerWin("IT'S A DRAW!", `SUDDEN DEATH: Both survivors had exactly ${redP.health}% Health!`);
+                    alert(`🏆 IT'S A PERFECT TIE!\n\nBoth ${p1.name} and ${p2.name} survived with exactly ${p1.deck.length} cards! 🏆`);
                 }
+                location.reload();
+                return;
             }
+
+            // Normal End Rule (for 2 player games)
+            if (alivePlayers.length <= 1) {
+                let winnerName = alivePlayers.length === 1 ? alivePlayers[0].name : "NOBODY";
+                alert(`🏆 ${winnerName} HAS COLLECTED ALL CARDS AND WINS THE GAME! 🏆`);
+                location.reload();
+                return;
+            }
+
+            tableCards = [];
+            activeStat = null;
+            
+            turnQueue = [];
+            let startIndex = alivePlayers.findIndex(p => p.id === leaderId);
+            for(let i = 0; i < alivePlayers.length; i++) {
+                turnQueue.push(alivePlayers[(startIndex + i) % alivePlayers.length].id);
+            }
+
+            triggerPassScreen();
+        }
+
+        function triggerPassScreen() {
+            if (turnQueue.length === 0) {
+                resolveRound();
+                return;
+            }
+            let nextPlayerId = turnQueue[0];
+            let p = players.find(p => p.id === nextPlayerId);
+            
+            document.getElementById('pass-msg').innerText = `Pass the device to: ${p.name}`;
+            switchScreen('pass-screen');
+        }
+
+        function showPlayScreen() {
+            let pId = turnQueue[0];
+            let p = players.find(p => p.id === pId);
+            selectedCardIndex = null;
+            
+            document.getElementById('current-player-name').innerText = p.name;
+            
+            let isLeader = (activeStat === null);
+            document.getElementById('target-stat-msg').innerText = isLeader ? 
+                "You are leading! Pick a card and a stat." : 
+                `Beat this Stat: ${statLabels[activeStat]}!`;
+
+            let tableHtml = "";
+            tableCards.forEach(tc => {
+                tableHtml += `<div class="card table-card">
+                    <div style="color:var(--secondary); font-weight:bold; text-align:center;">${tc.player.name}'s Card</div>
+                    <div class="card-title">${tc.card.name}</div>
+                    <div class="stat-line highlight"><span>${statLabels[activeStat]}</span><span>${tc.card[activeStat]}</span></div>
+                </div>`;
+            });
+            document.getElementById('current-table-area').innerHTML = tableHtml || "<p style='color:#888;'>Table is empty. You go first!</p>";
+
+            let deckHtml = "";
+            p.deck.forEach((card, index) => {
+                deckHtml += `
+                <div class="card" id="deck-card-${index}" onclick="selectCard(${index})">
+                    <div class="card-title">${card.name} <span style="float:right;">#${card.rollno}</span></div>
+                    ${['strength', 'height', 'weight', 'cgpa', 'absent_rate'].map(stat => 
+                        `<div class="stat-line ${activeStat === stat ? 'highlight' : ''}"><span>${statLabels[stat]}</span><span>${card[stat]}</span></div>`
+                    ).join('')}
+                </div>`;
+            });
+            document.getElementById('player-deck-container').innerHTML = deckHtml;
+
+            document.getElementById('action-panel').style.display = 'none'; 
+            document.getElementById('leader-actions').style.display = isLeader ? 'block' : 'none';
+            document.getElementById('follower-actions').style.display = isLeader ? 'none' : 'block';
+
+            switchScreen('play-screen');
+        }
+
+        function selectCard(index) {
+            selectedCardIndex = index;
+            document.querySelectorAll('#player-deck-container .card').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`deck-card-${index}`).classList.add('selected');
+            document.getElementById('action-panel').style.display = 'block';
+            document.getElementById('action-panel').scrollIntoView({behavior: "smooth"});
+        }
+
+        function playCardAsLeader(stat) {
+            activeStat = stat;
+            finalizePlay();
+        }
+
+        function playCardAsFollower() {
+            finalizePlay();
+        }
+
+        function finalizePlay() {
+            let pId = turnQueue.shift();
+            let p = players.find(p => p.id === pId);
+            
+            let playedCard = p.deck.splice(selectedCardIndex, 1)[0];
+            tableCards.push({ player: p, card: playedCard });
+            
+            triggerPassScreen();
+        }
+
+        // --- 4. Resolve Round ---
+        function resolveRound() {
+            let bestVal = activeStat === 'absent_rate' ? Infinity : -Infinity;
+            let winners = [];
+
+            tableCards.forEach(tc => {
+                let val = tc.card[activeStat];
+                if (activeStat === 'absent_rate') {
+                    if (val < bestVal) { bestVal = val; winners = [tc]; }
+                    else if (val === bestVal) { winners.push(tc); }
+                } else {
+                    if (val > bestVal) { bestVal = val; winners = [tc]; }
+                    else if (val === bestVal) { winners.push(tc); }
+                }
+            });
+
+            let resultMsg = "";
+            let nextLeaderId = null;
+
+            if (winners.length > 1) {
+                resultMsg = `IT'S A DRAW! Cards stay in the pot.`;
+                pot = pot.concat(tableCards.map(tc => tc.card));
+                nextLeaderId = winners[0].player.id; 
+            } else {
+                let winner = winners[0];
+                let wPlayer = winner.player;
+                
+                let cardsWon = tableCards.map(tc => tc.card).concat(pot);
+                wPlayer.deck.push(...cardsWon);
+                pot = []; 
+                
+                resultMsg = `🏆 ${wPlayer.name} wins the round!`;
+                nextLeaderId = wPlayer.id;
+            }
+
+            document.getElementById('round-winner-msg').innerText = resultMsg;
+            document.getElementById('round-stat-msg').innerText = `Stat: ${statLabels[activeStat]} (Winning Value: ${bestVal})`;
+            
+            let resultHtml = "";
+            tableCards.forEach(tc => {
+                let isWinCard = winners.includes(tc);
+                resultHtml += `<div class="card table-card" style="${isWinCard ? 'border-color:var(--secondary); transform:scale(1);' : ''}">
+                    <div style="color:${isWinCard ? 'var(--secondary)' : '#fff'}; text-align:center;">${tc.player.name}</div>
+                    <div class="card-title">${tc.card.name}</div>
+                    <div class="stat-line highlight"><span>${statLabels[activeStat]}</span><span>${tc.card[activeStat]}</span></div>
+                    ${isWinCard ? `<div class="winner-tag">WINNER</div>` : ''}
+                </div>`;
+            });
+            document.getElementById('result-table-area').innerHTML = resultHtml;
+
+            window.nextRoundLeaderId = nextLeaderId;
+            switchScreen('result-screen');
+        }
+
+        function nextRound() {
+            startNewRound(window.nextRoundLeaderId);
         }
     </script>
 </body>
