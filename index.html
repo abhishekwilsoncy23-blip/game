@@ -22,7 +22,7 @@
             min-height: 100vh; text-align: center;
         }
 
-        h1 { color: var(--primary); text-shadow: 0 0 10px var(--primary); }
+        h1 { color: var(--primary); text-shadow: 0 0 10px var(--primary); margin-bottom: 10px;}
         
         button {
             background-color: var(--primary); color: #000;
@@ -38,6 +38,15 @@
             border: 1px solid var(--primary); background: #1e293b; color: white;
             margin: 5px; text-align: center;
         }
+
+        /* Live Scoreboard */
+        #global-scoreboard {
+            display: none; flex-wrap: wrap; justify-content: center; gap: 20px;
+            background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 10px;
+            border: 1px solid var(--secondary); margin-bottom: 20px; width: 100%; max-width: 900px;
+        }
+        .score-item { font-size: 1.1rem; font-weight: bold; }
+        .score-item span { color: var(--primary); font-size: 1.4rem; margin-left: 5px; text-shadow: 0 0 5px var(--primary); }
 
         /* Screens */
         #loading-screen, #setup-screen, #pass-screen, #play-screen, #result-screen { display: none; width: 100%; max-width: 900px; }
@@ -86,6 +95,8 @@
 
     <h1>CY PLANET: STRATEGIC BATTLE</h1>
 
+    <div id="global-scoreboard"></div>
+
     <div id="loading-screen" class="active-screen">
         <h2>Loading Card Data...</h2>
         <p>Fetching students.json...</p>
@@ -120,6 +131,7 @@
         <div id="action-panel">
             <div id="leader-actions">
                 <h4>Choose a Stat to challenge others:</h4>
+                <button class="stat-btn" onclick="playCardAsLeader('rollno')">Roll No.</button>
                 <button class="stat-btn" onclick="playCardAsLeader('strength')">Strength</button>
                 <button class="stat-btn" onclick="playCardAsLeader('height')">Height</button>
                 <button class="stat-btn" onclick="playCardAsLeader('weight')">Weight</button>
@@ -151,8 +163,12 @@
         let selectedCardIndex = null;
 
         const statLabels = {
-            "strength": "Strength", "height": "Height",
-            "weight": "Weight", "cgpa": "CGPA", "absent_rate": "Absent Rate"
+            "rollno": "Roll No.",
+            "strength": "Strength", 
+            "height": "Height",
+            "weight": "Weight", 
+            "cgpa": "CGPA", 
+            "absent_rate": "Absent Rate"
         };
 
         // --- 1. Load JSON Data ---
@@ -177,8 +193,27 @@
         };
 
         function switchScreen(screenId) {
-            document.querySelectorAll('body > div').forEach(div => div.classList.remove('active-screen'));
+            document.querySelectorAll('body > div.active-screen').forEach(div => div.classList.remove('active-screen'));
             document.getElementById(screenId).classList.add('active-screen');
+        }
+
+        // Live Scoreboard Updater
+        function updateScoreboard() {
+            const sb = document.getElementById('global-scoreboard');
+            if (players.length === 0) {
+                sb.style.display = 'none';
+                return;
+            }
+            sb.style.display = 'flex';
+            let html = '';
+            players.forEach(p => {
+                html += `<div class="score-item">${p.name}: <span>${p.deck.length}</span></div>`;
+            });
+            // Show Pot if cards are tied in the middle
+            if (pot.length > 0) {
+                html += `<div class="score-item" style="color:var(--secondary)">POT: <span>${pot.length}</span></div>`;
+            }
+            sb.innerHTML = html;
         }
 
         // --- 2. Setup Game ---
@@ -209,6 +244,7 @@
             }
 
             let firstLeader = players[Math.floor(Math.random() * players.length)].id;
+            updateScoreboard();
             startNewRound(firstLeader);
         }
 
@@ -216,7 +252,6 @@
         function startNewRound(leaderId) {
             let alivePlayers = players.filter(p => p.deck.length > 0);
             
-            // NEW RULE: If we started with > 2 players and only 2 remain, end the game!
             if (players.length > 2 && alivePlayers.length === 2) {
                 let p1 = alivePlayers[0];
                 let p2 = alivePlayers[1];
@@ -232,7 +267,6 @@
                 return;
             }
 
-            // Normal End Rule (for 2 player games)
             if (alivePlayers.length <= 1) {
                 let winnerName = alivePlayers.length === 1 ? alivePlayers[0].name : "NOBODY";
                 alert(`🏆 ${winnerName} HAS COLLECTED ALL CARDS AND WINS THE GAME! 🏆`);
@@ -249,6 +283,7 @@
                 turnQueue.push(alivePlayers[(startIndex + i) % alivePlayers.length].id);
             }
 
+            updateScoreboard();
             triggerPassScreen();
         }
 
@@ -276,22 +311,26 @@
                 "You are leading! Pick a card and a stat." : 
                 `Beat this Stat: ${statLabels[activeStat]}!`;
 
+            // Draw Full Transparent Cards on Table
             let tableHtml = "";
             tableCards.forEach(tc => {
                 tableHtml += `<div class="card table-card">
-                    <div style="color:var(--secondary); font-weight:bold; text-align:center;">${tc.player.name}'s Card</div>
-                    <div class="card-title">${tc.card.name}</div>
-                    <div class="stat-line highlight"><span>${statLabels[activeStat]}</span><span>${tc.card[activeStat]}</span></div>
+                    <div style="color:var(--secondary); font-weight:bold; text-align:center; border-bottom: 1px solid #334; margin-bottom: 5px; padding-bottom: 5px;">${tc.player.name}'s Card</div>
+                    <div class="card-title">${tc.card.name} <span style="float:right;">#${tc.card.rollno}</span></div>
+                    ${['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'].map(stat => 
+                        `<div class="stat-line ${activeStat === stat ? 'highlight' : ''}"><span>${statLabels[stat]}</span><span>${tc.card[stat]}</span></div>`
+                    ).join('')}
                 </div>`;
             });
             document.getElementById('current-table-area').innerHTML = tableHtml || "<p style='color:#888;'>Table is empty. You go first!</p>";
 
+            // Draw Deck
             let deckHtml = "";
             p.deck.forEach((card, index) => {
                 deckHtml += `
                 <div class="card" id="deck-card-${index}" onclick="selectCard(${index})">
-                    <div class="card-title">${card.name} <span style="float:right;">#${card.rollno}</span></div>
-                    ${['strength', 'height', 'weight', 'cgpa', 'absent_rate'].map(stat => 
+                    <div class="card-title">${card.name}</div>
+                    ${['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'].map(stat => 
                         `<div class="stat-line ${activeStat === stat ? 'highlight' : ''}"><span>${statLabels[stat]}</span><span>${card[stat]}</span></div>`
                     ).join('')}
                 </div>`;
@@ -329,6 +368,8 @@
             let playedCard = p.deck.splice(selectedCardIndex, 1)[0];
             tableCards.push({ player: p, card: playedCard });
             
+            // Immediately update the scoreboard so everyone sees the card count drop
+            updateScoreboard();
             triggerPassScreen();
         }
 
@@ -339,6 +380,8 @@
 
             tableCards.forEach(tc => {
                 let val = tc.card[activeStat];
+                
+                // Lowest wins for absent rate. Highest wins for everything else.
                 if (activeStat === 'absent_rate') {
                     if (val < bestVal) { bestVal = val; winners = [tc]; }
                     else if (val === bestVal) { winners.push(tc); }
@@ -367,6 +410,9 @@
                 nextLeaderId = wPlayer.id;
             }
 
+            // Update scoreboard post-round to show the winner getting the cards
+            updateScoreboard();
+
             document.getElementById('round-winner-msg').innerText = resultMsg;
             document.getElementById('round-stat-msg').innerText = `Stat: ${statLabels[activeStat]} (Winning Value: ${bestVal})`;
             
@@ -376,7 +422,9 @@
                 resultHtml += `<div class="card table-card" style="${isWinCard ? 'border-color:var(--secondary); transform:scale(1);' : ''}">
                     <div style="color:${isWinCard ? 'var(--secondary)' : '#fff'}; text-align:center;">${tc.player.name}</div>
                     <div class="card-title">${tc.card.name}</div>
-                    <div class="stat-line highlight"><span>${statLabels[activeStat]}</span><span>${tc.card[activeStat]}</span></div>
+                    ${['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'].map(stat => 
+                        `<div class="stat-line ${activeStat === stat ? 'highlight' : ''}"><span>${statLabels[stat]}</span><span>${tc.card[stat]}</span></div>`
+                    ).join('')}
                     ${isWinCard ? `<div class="winner-tag">WINNER</div>` : ''}
                 </div>`;
             });
