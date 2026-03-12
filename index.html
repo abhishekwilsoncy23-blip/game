@@ -30,8 +30,8 @@
             font-weight: bold; border-radius: 8px; cursor: pointer;
             transition: 0.2s; margin: 10px;
         }
-        button:hover { background-color: #fff; box-shadow: 0 0 15px var(--primary); }
-        button:disabled { background-color: #555; color: #888; cursor: not-allowed; box-shadow: none; }
+        button:hover:not(:disabled) { background-color: #fff; box-shadow: 0 0 15px var(--primary); }
+        button:disabled { background-color: #334155; color: #64748b; cursor: not-allowed; box-shadow: none; border: 1px solid #1e293b; }
 
         input {
             padding: 10px; font-size: 1.1rem; border-radius: 5px;
@@ -74,6 +74,7 @@
         .card-title { font-size: 1.1rem; font-weight: bold; color: #fff; margin-bottom: 5px; border-bottom: 1px solid #334; padding-bottom: 5px;}
         .stat-line { display: flex; justify-content: space-between; font-size: 0.9rem; margin: 4px 0; background: #1e293b; padding: 4px 8px; border-radius: 4px; }
         .stat-line.highlight { background: var(--primary); color: #000; font-weight: bold; }
+        .stat-line.used-stat { color: #64748b; text-decoration: line-through; }
 
         /* Play Area */
         .table-area {
@@ -85,10 +86,13 @@
         /* Action Panel */
         #action-panel { margin-top: 20px; padding: 20px; border: 1px dashed var(--primary); border-radius: 10px; width: 100%; display: none;}
         .stat-btn { background: #1e293b; color: white; border: 1px solid var(--primary); margin: 5px; padding: 10px 15px;}
-        .stat-btn:hover { background: var(--primary); color: black; }
+        .stat-btn:hover:not(:disabled) { background: var(--primary); color: black; }
 
         .status-box { background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 10px; width: 100%; }
         .winner-tag { color: var(--secondary); font-weight: bold; font-size: 1.5rem; text-shadow: 0 0 10px var(--secondary); margin-top:10px;}
+        
+        /* Collection Animation Note */
+        .collection-note { color: var(--primary); font-size: 1.2rem; font-weight: bold; margin-top: 10px; background: #0b0f19; padding: 10px; border-radius: 8px; border: 1px solid var(--primary);}
     </style>
 </head>
 <body>
@@ -131,12 +135,12 @@
         <div id="action-panel">
             <div id="leader-actions">
                 <h4>Choose a Stat to challenge others:</h4>
-                <button class="stat-btn" onclick="playCardAsLeader('rollno')">Roll No.</button>
-                <button class="stat-btn" onclick="playCardAsLeader('strength')">Strength</button>
-                <button class="stat-btn" onclick="playCardAsLeader('height')">Height</button>
-                <button class="stat-btn" onclick="playCardAsLeader('weight')">Weight</button>
-                <button class="stat-btn" onclick="playCardAsLeader('cgpa')">CGPA</button>
-                <button class="stat-btn" onclick="playCardAsLeader('absent_rate')">Absent Rate</button>
+                <button class="stat-btn" id="btn-rollno" onclick="playCardAsLeader('rollno')">Roll No.</button>
+                <button class="stat-btn" id="btn-strength" onclick="playCardAsLeader('strength')">Strength</button>
+                <button class="stat-btn" id="btn-height" onclick="playCardAsLeader('height')">Height</button>
+                <button class="stat-btn" id="btn-weight" onclick="playCardAsLeader('weight')">Weight</button>
+                <button class="stat-btn" id="btn-cgpa" onclick="playCardAsLeader('cgpa')">CGPA</button>
+                <button class="stat-btn" id="btn-absent_rate" onclick="playCardAsLeader('absent_rate')">Absent Rate</button>
             </div>
             <div id="follower-actions" style="display:none;">
                 <button onclick="playCardAsFollower()" style="padding: 15px 30px; font-size: 1.2rem;">Play Selected Card</button>
@@ -147,6 +151,7 @@
     <div id="result-screen">
         <h2 id="round-winner-msg" style="font-size: 2rem;"></h2>
         <p id="round-stat-msg"></p>
+        <div id="cards-collected-msg" class="collection-note"></div>
         
         <div class="table-area" id="result-table-area"></div>
         
@@ -161,6 +166,9 @@
         let activeStat = null; 
         let pot = []; 
         let selectedCardIndex = null;
+        
+        // Track which stats have not been used yet
+        let availableStats = ['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'];
 
         const statLabels = {
             "rollno": "Roll No.",
@@ -209,7 +217,6 @@
             players.forEach(p => {
                 html += `<div class="score-item">${p.name}: <span>${p.deck.length}</span></div>`;
             });
-            // Show Pot if cards are tied in the middle
             if (pot.length > 0) {
                 html += `<div class="score-item" style="color:var(--secondary)">POT: <span>${pot.length}</span></div>`;
             }
@@ -230,6 +237,8 @@
         function startGame() {
             const count = parseInt(document.getElementById('num-players').value);
             players = [];
+            availableStats = ['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'];
+            
             for (let i = 0; i < count; i++) {
                 let name = document.getElementById(`p-name-${i}`).value || `Player ${i+1}`;
                 players.push({ id: i, name: name, deck: [] });
@@ -252,16 +261,16 @@
         function startNewRound(leaderId) {
             let alivePlayers = players.filter(p => p.deck.length > 0);
             
+            // End conditions
             if (players.length > 2 && alivePlayers.length === 2) {
                 let p1 = alivePlayers[0];
                 let p2 = alivePlayers[1];
-                
                 if (p1.deck.length > p2.deck.length) {
-                    alert(`🏆 GAME OVER! Only 2 players remain!\n\n${p1.name} WINS with ${p1.deck.length} cards! (${p2.name} had ${p2.deck.length} cards) 🏆`);
+                    alert(`🏆 GAME OVER! ${p1.name} WINS with ${p1.deck.length} cards!`);
                 } else if (p2.deck.length > p1.deck.length) {
-                    alert(`🏆 GAME OVER! Only 2 players remain!\n\n${p2.name} WINS with ${p2.deck.length} cards! (${p1.name} had ${p1.deck.length} cards) 🏆`);
+                    alert(`🏆 GAME OVER! ${p2.name} WINS with ${p2.deck.length} cards!`);
                 } else {
-                    alert(`🏆 IT'S A PERFECT TIE!\n\nBoth ${p1.name} and ${p2.name} survived with exactly ${p1.deck.length} cards! 🏆`);
+                    alert(`🏆 IT'S A PERFECT TIE!`);
                 }
                 location.reload();
                 return;
@@ -269,9 +278,15 @@
 
             if (alivePlayers.length <= 1) {
                 let winnerName = alivePlayers.length === 1 ? alivePlayers[0].name : "NOBODY";
-                alert(`🏆 ${winnerName} HAS COLLECTED ALL CARDS AND WINS THE GAME! 🏆`);
+                alert(`🏆 ${winnerName} HAS COLLECTED ALL CARDS AND WINS!`);
                 location.reload();
                 return;
+            }
+            
+            // Check if all stats have been exhausted. If yes, reset them so game doesn't break!
+            if (availableStats.length === 0) {
+                alert("All stats have been played! The stat pool has been refreshed.");
+                availableStats = ['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'];
             }
 
             tableCards = [];
@@ -308,10 +323,24 @@
             
             let isLeader = (activeStat === null);
             document.getElementById('target-stat-msg').innerText = isLeader ? 
-                "You are leading! Pick a card and a stat." : 
+                "You are leading! Pick a card and an available stat." : 
                 `Beat this Stat: ${statLabels[activeStat]}!`;
 
-            // Draw Full Transparent Cards on Table
+            // Draw Leader Buttons and disable exhausted stats
+            if (isLeader) {
+                ['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'].forEach(stat => {
+                    let btn = document.getElementById(`btn-${stat}`);
+                    if(availableStats.includes(stat)) {
+                        btn.disabled = false;
+                        btn.innerText = statLabels[stat];
+                    } else {
+                        btn.disabled = true;
+                        btn.innerText = statLabels[stat] + " (Used)";
+                    }
+                });
+            }
+
+            // Draw Cards on Table
             let tableHtml = "";
             tableCards.forEach(tc => {
                 tableHtml += `<div class="card table-card">
@@ -324,15 +353,17 @@
             });
             document.getElementById('current-table-area').innerHTML = tableHtml || "<p style='color:#888;'>Table is empty. You go first!</p>";
 
-            // Draw Deck
+            // Draw Deck (Strike through used stats for visual clarity)
             let deckHtml = "";
             p.deck.forEach((card, index) => {
                 deckHtml += `
                 <div class="card" id="deck-card-${index}" onclick="selectCard(${index})">
                     <div class="card-title">${card.name}</div>
-                    ${['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'].map(stat => 
-                        `<div class="stat-line ${activeStat === stat ? 'highlight' : ''}"><span>${statLabels[stat]}</span><span>${card[stat]}</span></div>`
-                    ).join('')}
+                    ${['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'].map(stat => {
+                        let classStr = activeStat === stat ? 'highlight' : '';
+                        if(!availableStats.includes(stat) && activeStat !== stat) classStr += ' used-stat';
+                        return `<div class="stat-line ${classStr}"><span>${statLabels[stat]}</span><span>${card[stat]}</span></div>`
+                    }).join('')}
                 </div>`;
             });
             document.getElementById('player-deck-container').innerHTML = deckHtml;
@@ -354,6 +385,8 @@
 
         function playCardAsLeader(stat) {
             activeStat = stat;
+            // Remove stat from available pool so it can't be used again
+            availableStats = availableStats.filter(s => s !== stat);
             finalizePlay();
         }
 
@@ -365,10 +398,10 @@
             let pId = turnQueue.shift();
             let p = players.find(p => p.id === pId);
             
+            // Take card from player deck, put on table
             let playedCard = p.deck.splice(selectedCardIndex, 1)[0];
             tableCards.push({ player: p, card: playedCard });
             
-            // Immediately update the scoreboard so everyone sees the card count drop
             updateScoreboard();
             triggerPassScreen();
         }
@@ -381,7 +414,6 @@
             tableCards.forEach(tc => {
                 let val = tc.card[activeStat];
                 
-                // Lowest wins for absent rate. Highest wins for everything else.
                 if (activeStat === 'absent_rate') {
                     if (val < bestVal) { bestVal = val; winners = [tc]; }
                     else if (val === bestVal) { winners.push(tc); }
@@ -392,34 +424,40 @@
             });
 
             let resultMsg = "";
+            let collectionMsg = "";
             let nextLeaderId = null;
 
             if (winners.length > 1) {
-                resultMsg = `IT'S A DRAW! Cards stay in the pot.`;
+                resultMsg = `IT'S A DRAW!`;
+                collectionMsg = `${tableCards.length} cards have been added to the POT!`;
                 pot = pot.concat(tableCards.map(tc => tc.card));
                 nextLeaderId = winners[0].player.id; 
             } else {
                 let winner = winners[0];
                 let wPlayer = winner.player;
                 
+                // ACTUAL LOGIC: Winner takes cards from table + pot
                 let cardsWon = tableCards.map(tc => tc.card).concat(pot);
+                let totalCardsCollected = cardsWon.length;
+                
                 wPlayer.deck.push(...cardsWon);
                 pot = []; 
                 
                 resultMsg = `🏆 ${wPlayer.name} wins the round!`;
+                collectionMsg = `Cards Collected: ${totalCardsCollected} (added to ${wPlayer.name}'s deck)`;
                 nextLeaderId = wPlayer.id;
             }
 
-            // Update scoreboard post-round to show the winner getting the cards
             updateScoreboard();
 
             document.getElementById('round-winner-msg').innerText = resultMsg;
-            document.getElementById('round-stat-msg').innerText = `Stat: ${statLabels[activeStat]} (Winning Value: ${bestVal})`;
+            document.getElementById('round-stat-msg').innerText = `Winning Stat: ${statLabels[activeStat]} = ${bestVal}`;
+            document.getElementById('cards-collected-msg').innerText = collectionMsg;
             
             let resultHtml = "";
             tableCards.forEach(tc => {
                 let isWinCard = winners.includes(tc);
-                resultHtml += `<div class="card table-card" style="${isWinCard ? 'border-color:var(--secondary); transform:scale(1);' : ''}">
+                resultHtml += `<div class="card table-card" style="${isWinCard ? 'border-color:var(--secondary); transform:scale(1); box-shadow: 0 0 20px var(--secondary);' : ''}">
                     <div style="color:${isWinCard ? 'var(--secondary)' : '#fff'}; text-align:center;">${tc.player.name}</div>
                     <div class="card-title">${tc.card.name}</div>
                     ${['rollno', 'strength', 'height', 'weight', 'cgpa', 'absent_rate'].map(stat => 
