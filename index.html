@@ -10,7 +10,7 @@
             font-family: 'Courier New', Courier, monospace;
             display: flex; flex-direction: column; align-items: center;
             min-height: 100vh; padding: 20px; box-sizing: border-box;
-            user-select: none;
+            user-select: none; overflow-x: hidden;
         }
 
         h1 { margin: 0 0 10px 0; font-size: 2rem; color: #f1c40f; text-transform: uppercase; text-align: center; }
@@ -31,18 +31,22 @@
             background: #e74c3c; color: white; border: none; padding: 12px 24px;
             font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-family: inherit; margin-top: 10px; text-transform: uppercase;
+            transition: all 0.2s ease;
         }
+        button:hover { background: #c0392b; }
         button:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
         #game-status {
             background: #f1c40f; color: #000; font-size: 1.5rem; width: 100%; 
             text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
         }
 
         #cancel-hint {
             background: #e74c3c; color: #fff; font-size: 1.2rem; width: 100%; 
             text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 20px; 
             font-weight: bold; cursor: pointer; display: none;
+            animation: pulse 1s infinite;
         }
 
         #battlefield { display: flex; justify-content: space-between; width: 100%; gap: 10px; }
@@ -53,8 +57,8 @@
         }
 
         .team-title { text-align: center; font-weight: bold; font-size: 1.2rem; margin-bottom: 5px; }
-        .team-a .team-title { color: #ff7675; }
-        .team-b .team-title { color: #74b9ff; }
+        .team-a .team-title { color: #ff7675; text-shadow: 0 0 5px #ff7675; }
+        .team-b .team-title { color: #74b9ff; text-shadow: 0 0 5px #74b9ff; }
 
         .player {
             background: #34495e; padding: 10px; border-radius: 5px;
@@ -63,41 +67,105 @@
 
         .player.active-turn {
             border: 2px solid #f1c40f; transform: scale(1.03);
-            box-shadow: 0 0 15px rgba(241, 196, 15, 0.5); z-index: 10;
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.6); z-index: 10;
         }
 
-        .player.dead { opacity: 0.3; filter: grayscale(100%); pointer-events: none; border: none; box-shadow: none; }
         .player.targetable { border: 2px dashed #e74c3c; cursor: crosshair; animation: pulse 1s infinite; }
-        .player.targetable:hover { background: #e74c3c; }
+        .player.targetable:hover { background: #c0392b; transform: scale(1.05); }
 
         .player-header { display: flex; justify-content: space-between; align-items: center; }
         .player-name { font-weight: bold; font-size: 1.1rem; }
-        .bullet-count { font-size: 1.2rem; color: #f1c40f; font-weight: bold; }
+        .bullet-count { font-size: 1.2rem; color: #f1c40f; font-weight: bold; text-shadow: 1px 1px 2px #000; }
 
-        .health-bar-bg { width: 100%; background: #555; height: 12px; border-radius: 10px; overflow: hidden; }
-        .health-bar-fill { height: 100%; background: #2ecc71; width: 100%; transition: width 0.3s, background 0.3s; }
+        .health-bar-bg { width: 100%; background: #222; height: 14px; border-radius: 10px; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
+        .health-bar-fill { height: 100%; background: #2ecc71; width: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s; }
 
         .arsenal { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
         
         .weapon-btn {
-            flex: 1; background: #555; color: white; border: none; padding: 5px; font-size: 0.8rem;
-            border-radius: 4px; cursor: pointer; text-align: center; font-family: inherit; font-weight: bold;
+            flex: 1; background: #555; color: white; border: none; padding: 6px; font-size: 0.85rem;
+            border-radius: 4px; cursor: pointer; text-align: center; font-family: inherit; font-weight: bold; margin-top: 0;
+            box-shadow: 0 2px 0 #222; transition: all 0.1s;
         }
-        .weapon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .weapon-btn.can-afford { background: #3498db; }
+        .weapon-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; transform: translateY(2px); }
+        .weapon-btn.can-afford { background: #3498db; box-shadow: 0 2px 0 #2980b9; }
         .weapon-btn.can-afford:hover { background: #2980b9; }
-        .weapon-btn.heal.can-afford { background: #2ecc71; }
-        .weapon-btn.pass { background: #95a5a6; }
+        .weapon-btn.can-afford:active { transform: translateY(2px); box-shadow: none; }
+        .weapon-btn.heal.can-afford { background: #2ecc71; box-shadow: 0 2px 0 #27ae60; }
+        .weapon-btn.heal.can-afford:hover { background: #27ae60; }
+        .weapon-btn.pass { background: #95a5a6; box-shadow: 0 2px 0 #7f8c8d; }
 
         #action-log {
-            background: #000; width: 100%; padding: 15px; box-sizing: border-box;
+            background: rgba(0, 0, 0, 0.7); width: 100%; padding: 15px; box-sizing: border-box;
             border-radius: 8px; margin-top: 20px; font-size: 0.95rem; color: #00ff00;
-            height: 180px; overflow-y: auto; border: 1px solid #333; line-height: 1.4;
+            height: 180px; overflow-y: auto; border: 1px solid #333; line-height: 1.5;
+            box-shadow: inset 0 0 10px #000;
         }
-        .log-entry { margin-bottom: 8px; border-bottom: 1px dashed #333; padding-bottom: 5px; }
-        .log-round { color: #f1c40f; margin-top: 15px; font-size: 1.1rem; }
+        .log-entry { margin-bottom: 8px; border-bottom: 1px dashed #333; padding-bottom: 5px; animation: slideIn 0.3s ease-out; }
+        .log-round { color: #f1c40f; margin-top: 15px; font-size: 1.1rem; text-shadow: 0 0 5px #f1c40f; }
 
+        /* =========================================
+           ✨ NEW VISUAL EFFECTS CSS ✨
+           ========================================= */
+        
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* Screen Shake */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake-intense { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-mild { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
+
+        /* Floating VFX Container */
+        .fx-container { 
+            position: fixed; pointer-events: none; z-index: 9999; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            transform: translate(-50%, -50%); /* Center on target coordinates */
+        }
+        
+        /* Floating Text (Damage / Heal) */
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(0.5); }
+            20% { transform: translateY(-10px) scale(1.5); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        }
+        .dmg-text { color: #ff4757; font-weight: 900; font-size: 2.5rem; text-shadow: 2px 2px 0 #000, -1px -1px 0 #fff; animation: float-up 1.2s ease-out forwards; z-index: 2;}
+        .heal-text { color: #2ecc71; font-weight: 900; font-size: 2.5rem; text-shadow: 2px 2px 0 #000, -1px -1px 0 #fff; animation: float-up 1.2s ease-out forwards; z-index: 2;}
+
+        /* Explosions & Impacts */
+        @keyframes explode {
+            0% { opacity: 1; transform: scale(0.2) rotate(0deg); }
+            40% { opacity: 1; transform: scale(2.5) rotate(15deg); }
+            100% { opacity: 0; transform: scale(3) rotate(30deg); }
+        }
+        .fx-sprite { font-size: 4rem; animation: explode 0.6s ease-out forwards; filter: drop-shadow(0 0 10px #ff6b81); position: absolute; z-index: 1;}
+
+        /* Dead Player Smoke & Overlay */
+        @keyframes smoke-rise {
+            0% { opacity: 0.8; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(2); }
+        }
+        .player.dead { 
+            opacity: 0.4; filter: grayscale(100%) brightness(50%); 
+            pointer-events: none; border: none; box-shadow: inset 0 0 20px #000; 
+            overflow: visible;
+        }
+        .player.dead::before {
+            content: '☠️'; position: absolute; font-size: 3rem; 
+            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; opacity: 0.8;
+        }
+        .player.dead::after {
+            content: '💨'; position: absolute; top: -10px; left: 45%; font-size: 1.5rem;
+            animation: smoke-rise 2s infinite ease-out; opacity: 0.6; pointer-events: none; z-index: 6;
+        }
+
     </style>
 </head>
 <body>
@@ -125,7 +193,7 @@
 
     <div id="game-screen">
         <div id="game-status">Loading...</div>
-        <div id="cancel-hint" onclick="cancelTargeting()">Select an enemy target! (Click here to cancel)</div>
+        <div id="cancel-hint" onclick="cancelTargeting()">⚠️ SELECT ENEMY TARGET ⚠️<br><small>(Click here to cancel)</small></div>
         
         <div id="battlefield">
             <div class="team team-a" id="team-a-container">
@@ -139,7 +207,7 @@
         </div>
 
         <div id="action-log"></div>
-        <button id="restart-btn" style="display:none; width:100%;" onclick="location.reload()">Play Again</button>
+        <button id="restart-btn" style="display:none; width:100%; padding: 20px; font-size: 1.5rem;" onclick="location.reload()">PLAY AGAIN</button>
     </div>
 
     <script>
@@ -173,26 +241,23 @@
                 players.push({
                     id: i, name: document.getElementById(`name-input-${i}`).value || `Player ${i+1}`,
                     team: i < count / 2 ? 'Red' : 'Blue', health: 100, bullets: 0,
-                    isAlive: true, hasActed: false // New stat to track who went this round
+                    isAlive: true, hasActed: false 
                 });
             }
             document.getElementById('name-setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
             gameActive = true;
             
-            // Start the very first round!
             startNewRound();
         }
 
         function startNewRound() {
             if (!gameActive) return;
             let alivePlayers = players.filter(p => p.isAlive);
-            if (alivePlayers.length <= 1) return; // Handled by game over
+            if (alivePlayers.length <= 1) return;
 
-            // Reset round tracking
             players.forEach(p => p.hasActed = false);
 
-            // Magic Modulo Match to pick who starts
             let drawnNumber = Math.floor(Math.random() * 21) + 10;
             let startingAliveIndex = drawnNumber % alivePlayers.length;
             currentPlayerIndex = alivePlayers[startingAliveIndex].id;
@@ -206,11 +271,10 @@
             if (!gameActive) return;
             let p = players[currentPlayerIndex];
             
-            // Give 1 bullet at the start of their turn
             p.bullets += 1;
             
-            document.getElementById('game-status').innerHTML = `💥 ${p.name}'s Turn! Choose an Action.`;
-            logAction(`➡️ <b>${p.name}'s Turn!</b> Gained 1 bullet (Total: ${p.bullets}).`);
+            document.getElementById('game-status').innerHTML = `🎯 ${p.name}'s Turn! Choose an Action.`;
+            logAction(`➡️ <b>${p.name}'s Turn!</b> Gained 1 ammo (Total: ${p.bullets}).`);
             renderBattlefield();
         }
 
@@ -222,7 +286,11 @@
                 shooter.bullets -= cost;
                 shooter.health = Math.min(100, shooter.health + damage);
                 logAction(`🟢 <b>${shooter.name}</b> healed 10% health!`);
-                endTurn(); // Action completes the turn
+                
+                // Trigger Visual Effect for Healing
+                spawnVFX(shooterId, 'Heal', damage);
+                
+                setTimeout(endTurn, 600); // Slight delay so player sees the heal pop
                 return;
             }
 
@@ -238,6 +306,9 @@
             let target = players.find(p => p.id === targetId);
             let shooter = players.find(p => p.id === targetingMode.shooterId);
 
+            // Grab target location BEFORE we change stats and re-render
+            spawnVFX(targetId, targetingMode.weaponName, targetingMode.damage);
+
             shooter.bullets -= targetingMode.cost;
             target.health -= targetingMode.damage;
             
@@ -251,8 +322,62 @@
             cancelTargeting(false); 
             checkGameOver();
             
-            if (gameActive) endTurn(); // Attack completes the turn
+            if (gameActive) {
+                // Wait slightly for VFX to finish before jumping to next turn
+                setTimeout(endTurn, 800); 
+            }
+            
+            renderBattlefield();
         }
+
+        // --- NEW VFX SYSTEM ---
+        function spawnVFX(playerId, weaponType, amount) {
+            let targetNode = document.getElementById(`player-node-${playerId}`);
+            if (!targetNode) return;
+            
+            // Get screen coordinates of the target player's box
+            let rect = targetNode.getBoundingClientRect();
+            let x = rect.left + (rect.width / 2);
+            let y = rect.top + (rect.height / 2);
+
+            // 1. Trigger Screen Shake
+            let body = document.body;
+            body.classList.remove('shake-mild', 'shake-intense');
+            void body.offsetWidth; // Force CSS reflow to restart animation
+            if (amount >= 30 && weaponType !== 'Heal') body.classList.add('shake-intense');
+            else if (weaponType !== 'Heal') body.classList.add('shake-mild');
+
+            // 2. Create Floating Container
+            let fx = document.createElement('div');
+            fx.className = 'fx-container';
+            fx.style.left = x + 'px';
+            fx.style.top = y + 'px';
+            
+            // 3. Select Emoji/Sprite based on weapon
+            let sprite = document.createElement('div');
+            sprite.className = 'fx-sprite';
+            if (weaponType === 'Heal') sprite.innerText = '✨💚✨';
+            else if (weaponType === 'Grenade') sprite.innerText = '💥💨';
+            else if (weaponType === 'Airstrike') sprite.innerText = '💣🔥💥';
+            else if (weaponType === 'Bunker Buster') sprite.innerText = '☢️🔥🌋';
+            else sprite.innerText = '💥'; // Base Shoot
+            
+            fx.appendChild(sprite);
+
+            // 4. Create Floating Damage/Heal Number
+            let text = document.createElement('div');
+            text.className = weaponType === 'Heal' ? 'heal-text' : 'dmg-text';
+            text.innerText = weaponType === 'Heal' ? `+${amount}` : `-${amount}`;
+            fx.appendChild(text);
+
+            // 5. Inject to screen and clean up after animation finishes
+            document.body.appendChild(fx);
+            setTimeout(() => { 
+                fx.remove(); 
+                body.classList.remove('shake-mild', 'shake-intense'); 
+            }, 1200);
+        }
+        // ----------------------
 
         function cancelTargeting(render = true) {
             targetingMode = null;
@@ -262,16 +387,13 @@
         }
 
         function endTurn() {
-            // Mark current player as having taken their turn
             players[currentPlayerIndex].hasActed = true;
             
-            // Find next alive player in the circle
             let nextIndex = (currentPlayerIndex + 1) % players.length;
             while (!players[nextIndex].isAlive && nextIndex !== currentPlayerIndex) {
                 nextIndex = (nextIndex + 1) % players.length;
             }
 
-            // Check if this new player has already acted. If yes, the round is over!
             if (players[nextIndex].hasActed) {
                 startNewRound();
             } else {
@@ -288,26 +410,25 @@
             players.forEach(p => {
                 let div = document.createElement('div');
                 div.className = `player ${!p.isAlive ? 'dead' : ''}`;
+                div.id = `player-node-${p.id}`; // Crucial for mapping VFX coordinates
                 
-                // Highlight targetable enemies
                 if (targetingMode && p.isAlive && p.team !== players.find(s => s.id === targetingMode.shooterId).team) {
                     div.classList.add('targetable');
                     div.onclick = () => executeAttack(p.id);
                 }
 
-                let barColor = p.health > 50 ? "#2ecc71" : p.health > 20 ? "#f39c12" : "#e74c3c";
+                let barColor = p.health > 50 ? "#2ecc71" : p.health > 25 ? "#f1c40f" : "#e74c3c";
                 let html = `
                     <div class="player-header">
                         <span class="player-name">${p.name}</span>
                         <span class="bullet-count">🪙 ${p.bullets}</span>
                     </div>
                     <div class="health-bar-bg"><div class="health-bar-fill" style="width: ${p.health}%; background: ${barColor};"></div></div>
-                    <div style="font-size: 0.8rem; text-align: right;">${p.health}% HP</div>
+                    <div style="font-size: 0.8rem; text-align: right; margin-top: 2px;">${p.health}% HP</div>
                 `;
 
-                // Only show Arsenal to the CURRENT active player
                 if (p.isAlive && p.id === currentPlayerIndex) {
-                    div.classList.add('active-turn'); // Golden highlight
+                    div.classList.add('active-turn'); 
                     
                     if (!targetingMode) {
                         html += `<div class="arsenal">`;
@@ -316,7 +437,7 @@
                         html += buildWeaponBtn(p, 'Heal', 7, 10, true, '❤️');
                         html += buildWeaponBtn(p, 'Airstrike', 10, 30, false, '✈️');
                         html += buildWeaponBtn(p, 'Bunker Buster', 20, 50, false, '🚀');
-                        html += `<button class="weapon-btn pass can-afford" onclick="logAction('⏳ <b>${p.name}</b> saved their ammo.'); endTurn()">Pass ⏳</button>`;
+                        html += `<button class="weapon-btn pass can-afford" onclick="logAction('⏳ <b>${p.name}</b> saved their ammo.'); endTurn()" style="flex: 100%; margin-top: 5px;">Pass & Save Ammo ⏳</button>`;
                         html += `</div>`;
                     }
                 }
@@ -330,7 +451,7 @@
             let canAfford = player.bullets >= cost;
             let classStr = `weapon-btn ${canAfford ? 'can-afford' : ''} ${isHeal ? 'heal' : ''}`;
             let clickAttr = canAfford ? `onclick="prepWeapon(${player.id}, '${name}', ${cost}, ${effect}, ${isHeal})"` : 'disabled';
-            return `<button class="${classStr}" ${clickAttr} title="${name}: ${cost} bullets">${cost}${icon}</button>`;
+            return `<button class="${classStr}" ${clickAttr} title="${name}: ${cost} ammo">${cost} ${icon}</button>`;
         }
 
         function logAction(text) {
@@ -351,8 +472,8 @@
                 document.getElementById('restart-btn').style.display = 'block';
                 
                 let winner = redAlive > 0 ? "TEAM RED" : "TEAM BLUE";
-                logAction(`<h2>🏆 ${winner} WINS THE WAR! 🏆</h2>`);
-                renderBattlefield(); // Renders one last time to remove UI
+                logAction(`<h2 style="text-align:center; color:#fff; text-shadow:0 0 10px #f1c40f;">🏆 ${winner} WINS THE WAR! 🏆</h2>`);
+                renderBattlefield();
             }
         }
     </script>
