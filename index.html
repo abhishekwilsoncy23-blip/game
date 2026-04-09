@@ -2,104 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Eagle Simulator - Neon World Tour</title>
+    <title>Eagle Simulator - Realistic World Tour</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #00020a; font-family: 'Courier New', monospace; }
+        body { margin: 0; overflow: hidden; background: #88ccff; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #hud {
-            position: absolute; top: 20px; left: 20px; color: #00ffcc;
-            background: rgba(0, 10, 20, 0.8); padding: 15px; border: 1px solid #00ffcc;
-            pointer-events: none; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+            position: absolute; top: 20px; left: 20px; color: #ffffff;
+            background: rgba(0, 30, 20, 0.7); padding: 15px; border-left: 4px solid #44aa44;
+            pointer-events: none; text-transform: uppercase; font-size: 13px; letter-spacing: 1px;
+            border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
         }
-        .label { color: #55aaaa; margin-right: 5px; }
-        .val { color: #ffffff; font-weight: bold; }
+        .label { color: #aaaaaa; margin-right: 8px; }
+        .val { color: #88ff88; font-weight: bold; }
+        #country { color: #ffcc00; font-weight: bold; font-size: 15px; }
         #loading {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #00ffcc; font-size: 24px; font-weight: bold; letter-spacing: 5px;
-            text-shadow: 0 0 10px #00ffcc; pointer-events: none;
+            color: #ffffff; font-size: 20px; font-weight: bold; letter-spacing: 2px;
+            background: rgba(0,0,0,0.8); padding: 20px 40px; border-radius: 10px; pointer-events: none;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <div id="loading">DECRYPTING SATELLITE DATA...</div>
+    <div id="loading">GENERATING WORLD GEOMETRY...</div>
 
     <div id="hud">
-        <div style="font-weight:bold; border-bottom:1px solid #00ffcc; margin-bottom:8px; padding-bottom:5px;">GLOBAL VECTOR SYSTEM</div>
+        <div style="font-weight:bold; margin-bottom:8px; padding-bottom:5px; border-bottom: 1px solid #555;">GLOBAL FLIGHT TRACKER</div>
+        <div><span class="label">Airspace:</span><span id="country">SCANNING...</span></div>
         <div><span class="label">GPS:</span><span id="gps" class="val">0, 0</span></div>
-        <div><span class="label">Speed:</span><span id="speed" class="val">MACH 1</span></div>
-        <div style="margin-top:10px; font-size: 10px; color: #008888;">[W/S] Pitch | [A/D] Yaw | [Space] Afterburner</div>
+        <div><span class="label">Airspeed:</span><span id="speed" class="val">MACH 1</span></div>
+        <div style="margin-top:10px; font-size: 10px; color: #bbbbbb;">[W/S] Pitch | [A/D] Yaw | [Space] Afterburner</div>
     </div>
 
     <script>
-        // --- 1. ENGINE & CYBERPUNK AESTHETICS ---
+        // --- 1. ENGINE & REALISTIC LIGHTING ---
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x00020a, 0.00015); // Deep dark space fog
+        scene.background = new THREE.Color(0x88ccff); // Sky blue
+        scene.fog = new THREE.FogExp2(0x88ccff, 0.00015); // Atmospheric haze
         
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 50000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0x00020a);
         document.body.appendChild(renderer.domElement);
 
-        const ambient = new THREE.AmbientLight(0xffffff, 1.0);
+        // Sunlight
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambient);
+        const sun = new THREE.DirectionalLight(0xffffee, 1.2);
+        sun.position.set(5000, 10000, -5000);
+        scene.add(sun);
 
-        // Add a digital wireframe grid for the ocean/ground
-        const gridHelper = new THREE.GridHelper(50000, 500, 0x002244, 0x001122);
-        gridHelper.position.y = -10;
-        scene.add(gridHelper);
+        // The Ocean
+        const oceanGeo = new THREE.PlaneGeometry(100000, 100000);
+        oceanGeo.rotateX(-Math.PI / 2);
+        const oceanMat = new THREE.MeshStandardMaterial({ color: 0x1a5b82, roughness: 0.1, metalness: 0.2 });
+        const ocean = new THREE.Mesh(oceanGeo, oceanMat);
+        ocean.position.y = -5; // Sink the ocean slightly below the land
+        scene.add(ocean);
 
-        // --- 2. THE SCALE OF THE WORLD ---
-        // We will multiply Lat/Lon by 100. 
-        // Example: Lon 180 = X 18,000. Lat 90 = Z -9,000.
+        // --- 2. SCALE MATH ---
         const WORLD_SCALE = 100;
-
         function lonToX(lon) { return lon * WORLD_SCALE; }
-        function latToZ(lat) { return -lat * WORLD_SCALE; } // Invert because -Z is forward in 3D
+        function latToZ(lat) { return -lat * WORLD_SCALE; }
         function xToLon(x) { return x / WORLD_SCALE; }
         function zToLat(z) { return -z / WORLD_SCALE; }
 
-        // --- 3. FETCH & PARSE GeoJSON ---
-        // This is a free, public JSON file containing the borders of every country.
+        // --- 3. FETCH & TRIANGULATE GeoJSON ---
         const GEOJSON_URL = 'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json';
+        const globalRadar = [];
 
-        function drawLineString(coords) {
-            const points = [];
-            coords.forEach(coord => {
-                const x = lonToX(coord[0]);
-                const z = latToZ(coord[1]);
-                points.push(new THREE.Vector3(x, 0, z)); // Draw borders flat on the ground
-            });
-            const geo = new THREE.BufferGeometry().setFromPoints(points);
-            const mat = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.8 });
-            return new THREE.Line(geo, mat);
+        // Earthy color palette for countries (Forests, Plains, Deserts)
+        const landColors = [0x3B5E2B, 0x4B6E2B, 0x557A2B, 0x6E6237, 0x8C844A, 0x446633];
+
+        function createPolygonShape(coords) {
+            // Main outer boundary
+            const outer = coords[0].map(c => new THREE.Vector2(lonToX(c[0]), latToZ(c[1])));
+            const shape = new THREE.Shape(outer);
+            
+            // Cut out holes (like lakes, or countries inside other countries)
+            for (let i = 1; i < coords.length; i++) {
+                const hole = coords[i].map(c => new THREE.Vector2(lonToX(c[0]), latToZ(c[1])));
+                shape.holes.push(new THREE.Path(hole));
+            }
+            return shape;
         }
 
         fetch(GEOJSON_URL)
             .then(res => res.json())
             .then(data => {
-                document.getElementById('loading').style.display = 'none'; // Hide loading text
-                
+                document.getElementById('loading').style.display = 'none';
                 const mapGroup = new THREE.Group();
                 
-                // GeoJSON can have complex nesting. We loop through Polygons and MultiPolygons.
                 data.features.forEach(feature => {
                     const geom = feature.geometry;
+                    const realName = feature.properties.name;
                     if (!geom) return;
 
+                    // Pick a random realistic terrain color for this country
+                    const countryColor = landColors[Math.floor(Math.random() * landColors.length)];
+                    const landMat = new THREE.MeshStandardMaterial({ 
+                        color: countryColor, roughness: 0.9, metalness: 0.0 
+                    });
+
+                    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+
+                    const processRing = (polygonCoords) => {
+                        // Calculate bounding box for the radar scanner
+                        polygonCoords[0].forEach(coord => {
+                            const x = lonToX(coord[0]);
+                            const z = latToZ(coord[1]);
+                            if (x < minX) minX = x; if (x > maxX) maxX = x;
+                            if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+                        });
+
+                        // Generate solid 3D geometry from the math
+                        const shape = createPolygonShape(polygonCoords);
+                        const shapeGeo = new THREE.ShapeGeometry(shape);
+                        shapeGeo.rotateX(-Math.PI / 2); // Lay the land flat on the ground
+                        
+                        const landMesh = new THREE.Mesh(shapeGeo, landMat);
+                        mapGroup.add(landMesh);
+                    };
+
                     if (geom.type === 'Polygon') {
-                        geom.coordinates.forEach(ring => {
-                            mapGroup.add(drawLineString(ring));
-                        });
+                        processRing(geom.coordinates);
                     } else if (geom.type === 'MultiPolygon') {
-                        geom.coordinates.forEach(poly => {
-                            poly.forEach(ring => {
-                                mapGroup.add(drawLineString(ring));
-                            });
-                        });
+                        geom.coordinates.forEach(poly => processRing(poly));
                     }
+
+                    // Save data for the HUD scanner
+                    globalRadar.push({
+                        name: realName,
+                        x: (minX + maxX) / 2,
+                        z: (minZ + maxZ) / 2
+                    });
                 });
 
                 scene.add(mapGroup);
@@ -109,41 +145,40 @@
                 console.error(err);
             });
 
-        // --- 4. THE EAGLE ---
+        // --- 4. REALISTIC EAGLE ---
         const eagleGroup = new THREE.Group();
         
-        // Neon Blue Eagle
-        const bodyMat = new THREE.MeshBasicMaterial({ color: 0x0055ff, wireframe: true });
-        const wingMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, wireframe: true });
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3a1e05, roughness: 0.8 }); // Brown feathers
+        const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }); // White head
         
         const body = new THREE.Mesh(new THREE.ConeGeometry(2, 12, 6), bodyMat);
         body.rotateX(Math.PI / 2);
         eagleGroup.add(body);
 
-        const head = new THREE.Mesh(new THREE.SphereGeometry(2, 6, 6), wingMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(2, 6, 6), whiteMat);
         head.position.set(0, 0.5, -6);
         eagleGroup.add(head);
 
         const wingGeo = new THREE.BoxGeometry(16, 0.5, 5);
         const leftPivot = new THREE.Group(); leftPivot.position.set(-1.5, 0.5, -1);
-        const leftWing = new THREE.Mesh(wingGeo, wingMat); leftWing.position.set(-8, 0, 0); 
+        const leftWing = new THREE.Mesh(wingGeo, bodyMat); leftWing.position.set(-8, 0, 0); 
         leftPivot.add(leftWing);
         
         const rightPivot = new THREE.Group(); rightPivot.position.set(1.5, 0.5, -1);
-        const rightWing = new THREE.Mesh(wingGeo, wingMat); rightWing.position.set(8, 0, 0);
+        const rightWing = new THREE.Mesh(wingGeo, bodyMat); rightWing.position.set(8, 0, 0);
         rightPivot.add(rightWing);
 
         eagleGroup.add(leftPivot);
         eagleGroup.add(rightPivot);
 
         eagleGroup.add(camera);
-        camera.position.set(0, 40, 80); 
-        camera.lookAt(0, -15, -40);
+        camera.position.set(0, 50, 100); 
+        camera.lookAt(0, -10, -40);
 
         scene.add(eagleGroup);
         
-        // Start position: Let's start near India (Lon: 76, Lat: 20)
-        eagleGroup.position.set(lonToX(76), 300, latToZ(20)); 
+        // Start position: High over India (Lon: 76, Lat: 20)
+        eagleGroup.position.set(lonToX(76), 500, latToZ(20)); 
 
         // --- 5. FLIGHT ENGINE ---
         let rotation = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -156,18 +191,15 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // Supersonic speeds to cross countries quickly
             const isBoosting = keys['Space'];
-            const speed = isBoosting ? 60.0 : 20.0;
+            const speed = isBoosting ? 80.0 : 25.0; // Fast speeds for world traversal
             document.getElementById('speed').innerText = isBoosting ? "MACH 3" : "MACH 1";
 
-            // Wing flapping
             time += isBoosting ? 0.3 : 0.1;
             const flap = Math.sin(time) * 0.4;
             leftPivot.rotation.z = -flap;
             rightPivot.rotation.z = flap;
 
-            // Turning controls
             if (keys['KeyW']) rotation.x -= 0.01;
             if (keys['KeyS']) rotation.x += 0.01;
             if (keys['KeyA']) rotation.y += 0.02;
@@ -179,12 +211,41 @@
 
             eagleGroup.rotation.z = THREE.MathUtils.lerp(eagleGroup.rotation.z, keys['KeyA'] ? 0.6 : (keys['KeyD'] ? -0.6 : 0), 0.1);
 
-            if (eagleGroup.position.y < 20) eagleGroup.position.y = 20; // Don't crash into ground
+            if (eagleGroup.position.y < 30) eagleGroup.position.y = 30; // Keep above ground
 
-            // Update GPS HUD
+            // Update GPS
             const currentLon = xToLon(eagleGroup.position.x);
             const currentLat = zToLat(eagleGroup.position.z);
             document.getElementById('gps').innerText = `${currentLat.toFixed(2)}, ${currentLon.toFixed(2)}`;
+
+            // --- RADAR SCANNER LOGIC ---
+            if (globalRadar.length > 0) {
+                let closestCountry = "INTERNATIONAL WATERS";
+                let shortestDist = Infinity;
+
+                for (let i = 0; i < globalRadar.length; i++) {
+                    const target = globalRadar[i];
+                    const dist = Math.sqrt(
+                        Math.pow(eagleGroup.position.x - target.x, 2) + 
+                        Math.pow(eagleGroup.position.z - target.z, 2)
+                    );
+
+                    if (dist < shortestDist) {
+                        shortestDist = dist;
+                        closestCountry = target.name;
+                    }
+                }
+                
+                // If we are super far from any country center, assume we are over the ocean
+                if (shortestDist > 3000) {
+                    closestCountry = "INTERNATIONAL WATERS";
+                    document.getElementById('country').style.color = '#88ccff';
+                } else {
+                    document.getElementById('country').style.color = '#ffcc00';
+                }
+
+                document.getElementById('country').innerText = closestCountry.toUpperCase();
+            }
 
             renderer.render(scene, camera);
         }
