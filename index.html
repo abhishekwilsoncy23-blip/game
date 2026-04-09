@@ -2,16 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Eagle Infinity - Lush World</title>
+    <title>Eagle Simulator - 3rd Person</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000510; font-family: 'Courier New', monospace; }
         #hud {
-            position: absolute; top: 20px; left: 20px; color: #00ffcc;
-            background: rgba(0, 10, 20, 0.8); padding: 15px; border: 1px solid #00ffcc;
-            pointer-events: none; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+            position: absolute; top: 20px; left: 20px; color: #ffcc00;
+            background: rgba(10, 10, 0, 0.8); padding: 15px; border: 1px solid #ffcc00;
+            pointer-events: none; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
+            border-radius: 5px;
         }
-        .label { color: #55aaaa; margin-right: 5px; }
+        .label { color: #aaaaaa; margin-right: 5px; }
         .val { color: #ffffff; font-weight: bold; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -19,20 +20,20 @@
 <body>
 
     <div id="hud">
-        <div style="font-weight:bold; border-bottom:1px solid #00ffcc; margin-bottom:8px; padding-bottom:5px;">Eagle Flight System v4.0</div>
+        <div style="font-weight:bold; border-bottom:1px solid #ffcc00; margin-bottom:8px; padding-bottom:5px;">EAGLE SIMULATOR v5.0</div>
         <div><span class="label">Biome:</span><span id="biome" class="val">Scanning...</span></div>
         <div><span class="label">Alt:</span><span id="alt" class="val">0</span>m</div>
-        <div><span class="label">Pos:</span><span id="pos" class="val">0, 0</span></div>
-        <div style="margin-top:10px; font-size: 9px; color: #008888;">[W/S] Pitch | [A/D] Yaw | [Space] Afterburner</div>
+        <div><span class="label">Speed:</span><span id="speed" class="val">Soaring</span></div>
+        <div style="margin-top:10px; font-size: 10px; color: #ffaa00;">[W/S] Pitch | [A/D] Yaw | [Space] Flap/Boost</div>
     </div>
 
     <script>
         // --- 1. SETTINGS & WORLD SCALE ---
         const TILE_SIZE = 2500; 
-        const VIEW_DIST = 1; // Renders 3x3 grid around player
+        const VIEW_DIST = 1; 
         
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000815, 0.0003); // Deep atmospheric fog
+        scene.fog = new THREE.FogExp2(0x000815, 0.0003);
         
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 30000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -40,24 +41,81 @@
         renderer.setClearColor(0x000815);
         document.body.appendChild(renderer.domElement);
 
-        // Lights
         const ambient = new THREE.AmbientLight(0x4444ff, 0.4);
         scene.add(ambient);
         const sun = new THREE.DirectionalLight(0xffffff, 1.0);
         sun.position.set(1000, 2000, 1000);
         scene.add(sun);
 
-        // --- 2. BIOME DEFINITIONS ---
+        // --- 2. BUILD THE EAGLE (Procedural Low-Poly) ---
+        const eagleGroup = new THREE.Group();
+        
+        // Body (Brown)
+        const bodyGeo = new THREE.ConeGeometry(2, 10, 5);
+        bodyGeo.rotateX(Math.PI / 2);
+        const bodyMat = new THREE.MeshPhongMaterial({ color: 0x4a2e15, flatShading: true });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        eagleGroup.add(body);
+
+        // Head (White)
+        const headGeo = new THREE.SphereGeometry(1.8, 5, 5);
+        const headMat = new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.set(0, 0.5, -5);
+        eagleGroup.add(head);
+
+        // Beak (Yellow)
+        const beakGeo = new THREE.ConeGeometry(0.8, 2.5, 4);
+        beakGeo.rotateX(Math.PI / 2);
+        const beakMat = new THREE.MeshPhongMaterial({ color: 0xffcc00, flatShading: true });
+        const beak = new THREE.Mesh(beakGeo, beakMat);
+        beak.position.set(0, 0.2, -7);
+        eagleGroup.add(beak);
+
+        // Tail (Dark Brown)
+        const tailGeo = new THREE.BoxGeometry(3, 0.5, 4);
+        const tailMat = new THREE.MeshPhongMaterial({ color: 0x2a1a0a, flatShading: true });
+        const tail = new THREE.Mesh(tailGeo, tailMat);
+        tail.position.set(0, 0, 5);
+        eagleGroup.add(tail);
+
+        // Wings with Pivots for Flapping
+        const wingGeo = new THREE.BoxGeometry(14, 0.4, 4);
+        const wingMat = new THREE.MeshPhongMaterial({ color: 0x2a1a0a, flatShading: true });
+        
+        const leftPivot = new THREE.Group();
+        leftPivot.position.set(-1.5, 0.5, -1);
+        const leftWing = new THREE.Mesh(wingGeo, wingMat);
+        leftWing.position.set(-7, 0, 0); // Offset from pivot
+        leftPivot.add(leftWing);
+        
+        const rightPivot = new THREE.Group();
+        rightPivot.position.set(1.5, 0.5, -1);
+        const rightWing = new THREE.Mesh(wingGeo, wingMat);
+        rightWing.position.set(7, 0, 0); // Offset from pivot
+        rightPivot.add(rightWing);
+
+        eagleGroup.add(leftPivot);
+        eagleGroup.add(rightPivot);
+
+        // Attach Camera to Eagle (3rd Person View)
+        eagleGroup.add(camera);
+        camera.position.set(0, 8, 25); // Behind and slightly above
+        camera.lookAt(0, 0, -20);      // Look past the eagle
+
+        scene.add(eagleGroup);
+        eagleGroup.position.set(0, 400, 0); // Starting altitude
+
+        // --- 3. BIOME GENERATION ---
         const BIOMES = {
             CITY: { color: 0x111111, ground: 0x0a0a0a },
-            FOREST: { color: 0x0c1a0c, ground: 0x1b2411 }, // Muddy green
+            FOREST: { color: 0x0c1a0c, ground: 0x1b2411 },
             MOUNTAIN: { color: 0x333333, ground: 0x222222 },
             LAKE: { color: 0x001133, ground: 0x002244 }
         };
 
         const tiles = new Map();
 
-        // Deterministic noise for Biome mapping
         function getBiomeType(tx, tz) {
             const noise = (Math.sin(tx * 0.5) + Math.sin(tz * 0.5)) / 2;
             if (noise > 0.4) return 'CITY';
@@ -73,31 +131,23 @@
             const x = tx * TILE_SIZE;
             const z = tz * TILE_SIZE;
 
-            // Ground Plane
-            const groundGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE);
-            const groundMat = new THREE.MeshLambertMaterial({ color: conf.ground });
-            const ground = new THREE.Mesh(groundGeo, groundMat);
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE), new THREE.MeshLambertMaterial({ color: conf.ground }));
             ground.rotation.x = -Math.PI / 2;
             ground.position.set(x, 0, z);
             group.add(ground);
 
-            // Populate Objects based on Biome
             if (type === 'CITY') {
                 for(let i=0; i<80; i++) {
                     const h = Math.random() * Math.random() * 300 + 30;
                     const w = Math.random() * 30 + 20;
-                    const bGeo = new THREE.BoxGeometry(w, h, w);
-                    const bMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
-                    const b = new THREE.Mesh(bGeo, bMat);
+                    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshPhongMaterial({ color: 0x111111 }));
                     b.position.set(x + (Math.random()-0.5)*TILE_SIZE, h/2, z + (Math.random()-0.5)*TILE_SIZE);
-                    
-                    const edges = new THREE.EdgesGeometry(bGeo);
-                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.4 }));
+                    const line = new THREE.LineSegments(new THREE.EdgesGeometry(b.geometry), new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.4 }));
                     b.add(line);
                     group.add(b);
                 }
             } else if (type === 'FOREST') {
-                const leafMat = new THREE.MeshLambertMaterial({ color: 0x1a2e1a });
+                const leafMat = new THREE.MeshLambertMaterial({ color: 0x1a2e1a, flatShading: true });
                 for(let i=0; i<250; i++) {
                     const h = Math.random() * 50 + 20;
                     const t = new THREE.Mesh(new THREE.ConeGeometry(12, h, 5), leafMat);
@@ -108,16 +158,15 @@
                 for(let i=0; i<12; i++) {
                     const h = Math.random() * 800 + 300;
                     const r = Math.random() * 200 + 200;
-                    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 4), new THREE.MeshPhongMaterial({ color: 0x333333, shininess: 5 }));
+                    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 4), new THREE.MeshPhongMaterial({ color: 0x333333, flatShading: true }));
                     m.position.set(x + (Math.random()-0.5)*TILE_SIZE, h/2, z + (Math.random()-0.5)*TILE_SIZE);
                     m.rotation.y = Math.random() * Math.PI;
                     group.add(m);
                 }
             } else if (type === 'LAKE') {
-                const waterMat = new THREE.MeshPhongMaterial({ color: 0x004488, transparent: true, opacity: 0.7, shininess: 100 });
-                const water = new THREE.Mesh(new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE), waterMat);
+                const water = new THREE.Mesh(new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE), new THREE.MeshPhongMaterial({ color: 0x004488, transparent: true, opacity: 0.7, shininess: 100 }));
                 water.rotation.x = -Math.PI / 2;
-                water.position.set(x, 5, z); // Slightly above ground
+                water.position.set(x, 5, z);
                 group.add(water);
             }
 
@@ -125,29 +174,17 @@
             return { group, type };
         }
 
-        // --- 3. FLIGHT ENGINE ---
-        let rotation = new THREE.Euler(0, 0, 0, 'YXZ');
-        const keys = {};
-        window.onkeydown = (e) => keys[e.code] = true;
-        window.onkeyup = (e) => keys[e.code] = false;
-
-        camera.position.set(0, 400, 0);
-
         function updateMap() {
-            const curX = Math.round(camera.position.x / TILE_SIZE);
-            const curZ = Math.round(camera.position.z / TILE_SIZE);
+            const curX = Math.round(eagleGroup.position.x / TILE_SIZE);
+            const curZ = Math.round(eagleGroup.position.z / TILE_SIZE);
 
-            // Load new tiles
             for (let i = -VIEW_DIST; i <= VIEW_DIST; i++) {
                 for (let j = -VIEW_DIST; j <= VIEW_DIST; j++) {
                     const key = `${curX + i},${curZ + j}`;
-                    if (!tiles.has(key)) {
-                        tiles.set(key, createTile(curX + i, curZ + j));
-                    }
+                    if (!tiles.has(key)) tiles.set(key, createTile(curX + i, curZ + j));
                 }
             }
 
-            // Unload far tiles
             for (const [key, val] of tiles) {
                 const [tx, tz] = key.split(',').map(Number);
                 if (Math.abs(tx - curX) > VIEW_DIST + 1 || Math.abs(tz - curZ) > VIEW_DIST + 1) {
@@ -156,30 +193,50 @@
                 }
             }
 
-            // HUD
             const active = tiles.get(`${curX},${curZ}`);
             if (active) document.getElementById('biome').innerText = active.type;
-            document.getElementById('pos').innerText = `${Math.floor(camera.position.x)}, ${Math.floor(camera.position.z)}`;
-            document.getElementById('alt').innerText = Math.floor(camera.position.y);
+            document.getElementById('alt').innerText = Math.floor(eagleGroup.position.y);
         }
 
-        // --- 4. LOOP ---
+        // --- 4. FLIGHT ENGINE & ANIMATION LOOP ---
+        let rotation = new THREE.Euler(0, 0, 0, 'YXZ');
+        const keys = {};
+        window.onkeydown = (e) => keys[e.code] = true;
+        window.onkeyup = (e) => keys[e.code] = false;
+
+        let time = 0;
+
         function animate() {
             requestAnimationFrame(animate);
 
-            const speed = keys['Space'] ? 18.0 : 6.5;
+            // Flight Speed
+            const isBoosting = keys['Space'];
+            const speed = isBoosting ? 18.0 : 6.5;
+            document.getElementById('speed').innerText = isBoosting ? "DIVING" : "SOARING";
+
+            // Wing Flapping Math (Faster when boosting)
+            time += isBoosting ? 0.2 : 0.05;
+            const flapAngle = Math.sin(time) * (isBoosting ? 0.6 : 0.2);
+            leftPivot.rotation.z = -flapAngle;
+            rightPivot.rotation.z = flapAngle;
+
+            // Rotation Controls
             if (keys['KeyW']) rotation.x -= 0.02;
             if (keys['KeyS']) rotation.x += 0.02;
-            if (keys['KeyA']) rotation.y += 0.025;
-            if (keys['KeyD']) rotation.y -= 0.025;
+            if (keys['KeyA']) rotation.y += 0.03;
+            if (keys['KeyD']) rotation.y -= 0.03;
 
-            camera.quaternion.setFromEuler(rotation);
-            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            camera.position.addScaledVector(dir, speed);
+            // Apply rotation and move forward
+            eagleGroup.quaternion.setFromEuler(rotation);
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(eagleGroup.quaternion);
+            eagleGroup.position.addScaledVector(dir, speed);
 
-            // Level limiter
-            if (camera.position.y < 15) camera.position.y = 15;
-            if (camera.position.y > 2000) camera.position.y = 2000;
+            // Eagle Banking (Visual effect when turning)
+            if (keys['KeyA']) eagleGroup.rotation.z += 0.5; // Bank left
+            if (keys['KeyD']) eagleGroup.rotation.z -= 0.5; // Bank right
+
+            // Floor constraint
+            if (eagleGroup.position.y < 15) eagleGroup.position.y = 15;
 
             updateMap();
             renderer.render(scene, camera);
