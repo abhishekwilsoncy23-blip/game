@@ -2,75 +2,88 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Eagle Eye - Infinite Streamer</title>
+    <title>Eagle Procedural - Infinity</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
         #hud {
-            position: absolute; top: 20px; left: 20px; color: #00ff00;
-            background: rgba(0, 20, 0, 0.8); padding: 15px; 
-            border: 1px solid #00ff00; border-radius: 4px;
-            pointer-events: none; text-transform: uppercase; font-size: 11px;
-            letter-spacing: 1px; box-shadow: 0 0 10px rgba(0,255,0,0.2);
+            position: absolute; top: 20px; left: 20px; color: #00ffcc;
+            background: rgba(0, 10, 10, 0.8); padding: 15px; border: 1px solid #00ffcc;
+            pointer-events: none; text-transform: uppercase; font-size: 12px;
         }
-
-        #loading {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #00ff00; font-size: 18px; display: none;
-            background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid #00ff00;
-        }
-
-        .status-ok { color: #00ff00; }
-        .status-warn { color: #ffcc00; }
-        .status-error { color: #ff3333; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
     <div id="hud">
-        <div style="font-weight: bold; border-bottom: 1px solid #00ff00; margin-bottom: 5px; padding-bottom: 5px;">Eagle-Eye Flight System</div>
-        <div id="coords">Lat: -- | Lon: --</div>
-        <div id="status">Status: <span class="status-ok">Initializing...</span></div>
-        <div id="objects">Buildings: 0</div>
-        <div style="margin-top:10px; color: #88ff88;">[W/S] Pitch | [A/D] Yaw | [Space] Boost</div>
+        <div>System: Procedural Eagle</div>
+        <div id="dist">Distance: 0m</div>
+        <div>Status: Generating Infinity...</div>
+        <div style="margin-top:10px; color: #55aaaa;">[W/S] Pitch | [A/D] Yaw | [Space] Boost</div>
     </div>
 
-    <div id="loading">STREAMING DATA SECTOR...</div>
-
     <script>
-        // --- 1. CONFIGURATION & STATE ---
-        let lat = 51.5074; // London center
-        let lon = -0.1278;
-        
-        const FETCH_RADIUS = 600;      // Meters to fetch around player
-        const UPDATE_THRESHOLD = 350;  // Refetch after moving this many meters
-        const FETCH_COOLDOWN = 4000;   // Min ms between API calls (Prevents 429)
-
-        let isFetching = false;
-        let lastFetchTime = 0;
-        let lastFetchPos = new THREE.Vector3(0, 0, 0);
-        let loadedWays = new Set(); 
-
-        // --- 2. THREE.JS ENGINE SETUP ---
+        // --- 1. ENGINE SETUP ---
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000500, 0.0008);
+        scene.fog = new THREE.FogExp2(0x000505, 0.0008);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 15000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 20000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0x000500);
         document.body.appendChild(renderer.domElement);
 
-        // Lighting
-        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-        sun.position.set(500, 1000, 200);
-        scene.add(sun);
-        scene.add(new THREE.AmbientLight(0x204020, 0.5));
+        const ambient = new THREE.AmbientLight(0x00ffcc, 0.2);
+        scene.add(ambient);
 
-        // Ground Grid
-        const grid = new THREE.GridHelper(20000, 100, 0x004400, 0x002200);
-        scene.add(grid);
+        // --- 2. PROCEDURAL GENERATION CONFIG ---
+        const CHUNK_SIZE = 1000;
+        let visibleChunks = new Map();
+        const buildingMaterial = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        const wireMaterial = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.4 });
+
+        // Simple "Road" function: A winding sine wave
+        function getRoadX(z) {
+            return Math.sin(z * 0.001) * 200 + Math.sin(z * 0.0004) * 400;
+        }
+
+        function createChunk(zChunk) {
+            const group = new THREE.Group();
+            const startZ = zChunk * CHUNK_SIZE;
+
+            // Add Ground Grid for this chunk
+            const grid = new THREE.GridHelper(CHUNK_SIZE, 20, 0x004444, 0x001111);
+            grid.position.set(getRoadX(startZ), 0, startZ + CHUNK_SIZE/2);
+            group.add(grid);
+
+            // Populate with Buildings
+            for (let i = 0; i < 40; i++) {
+                const bH = Math.random() * Math.random() * 150 + 20;
+                const bW = Math.random() * 20 + 10;
+                const bD = Math.random() * 20 + 10;
+                
+                const geom = new THREE.BoxGeometry(bW, bH, bD);
+                const mesh = new THREE.Mesh(geom, buildingMaterial);
+
+                // Position building randomly, but keep the road clear
+                let bx = (Math.random() - 0.5) * 1200;
+                let bz = startZ + Math.random() * CHUNK_SIZE;
+                
+                // Keep buildings away from the "Road" center
+                const roadX = getRoadX(bz);
+                if (Math.abs(bx - roadX) < 60) bx += (bx > roadX ? 100 : -100);
+
+                mesh.position.set(bx, bH / 2, bz);
+                
+                // Add Neon Edges
+                const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geom), wireMaterial);
+                mesh.add(wire);
+                
+                group.add(mesh);
+            }
+
+            scene.add(group);
+            return group;
+        }
 
         // --- 3. FLIGHT CONTROLS ---
         let rotation = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -78,142 +91,53 @@
         window.onkeydown = (e) => keys[e.code] = true;
         window.onkeyup = (e) => keys[e.code] = false;
 
-        camera.position.set(0, 180, 0);
+        camera.position.set(0, 50, 0);
 
-        // --- 4. OSM DATA STREAMER ---
-        async function fetchMapData(currentLat, currentLon) {
-            const now = Date.now();
+        // --- 4. INFINITY LOGIC ---
+        function updateChunks() {
+            const currentChunkZ = Math.floor(camera.position.z / CHUNK_SIZE);
             
-            // Safety Valve: Don't spam the API
-            if (isFetching || (now - lastFetchTime < FETCH_COOLDOWN)) return;
-
-            isFetching = true;
-            lastFetchTime = now;
-            
-            const statusEl = document.getElementById('status');
-            statusEl.innerHTML = `Status: <span class="status-warn">Streaming...</span>`;
-            document.getElementById('loading').style.display = "block";
-
-            // Overpass Turbo Query
-            const query = `[out:json][timeout:25];
-                (
-                  way(around:${FETCH_RADIUS},${currentLat},${currentLon})["building"];
-                );
-                out body; >; out skel qt;`;
-            
-            try {
-                const response = await fetch('https://overpass-api.de/api/interpreter', {
-                    method: 'POST',
-                    body: query
-                });
-
-                if (response.status === 429) {
-                    statusEl.innerHTML = `Status: <span class="status-error">429 - Throttled</span>`;
-                    lastFetchTime += 10000; // Penalize cooldown
-                    return;
+            // Generate 5 chunks ahead, keep 1 behind
+            for (let z = currentChunkZ - 1; z < currentChunkZ + 6; z++) {
+                if (!visibleChunks.has(z)) {
+                    visibleChunks.set(z, createChunk(z));
                 }
+            }
 
-                const data = await response.json();
-                renderBuildings(data);
-                statusEl.innerHTML = `Status: <span class="status-ok">Online</span>`;
-            } catch (e) {
-                statusEl.innerHTML = `Status: <span class="status-error">API Error</span>`;
-                console.error("OSM Error:", e);
-            } finally {
-                isFetching = false;
-                document.getElementById('loading').style.display = "none";
+            // Cleanup old chunks
+            for (const [z, group] of visibleChunks) {
+                if (z < currentChunkZ - 2) {
+                    scene.remove(group);
+                    visibleChunks.delete(z);
+                }
             }
         }
 
-        function renderBuildings(data) {
-            const nodes = {};
-            data.elements.forEach(el => { if (el.type === 'node') nodes[el.id] = el; });
-
-            data.elements.forEach(el => {
-                if (el.type === 'way' && el.tags && el.tags.building && !loadedWays.has(el.id)) {
-                    loadedWays.add(el.id);
-                    
-                    const coords = el.nodes.map(id => nodes[id]).filter(n => n);
-                    if (coords.length < 3) return;
-
-                    const points = coords.map(n => {
-                        // GPS to Meter Conversion
-                        const x = (n.lon - lon) * 111320 * Math.cos(lat * Math.PI / 180);
-                        const z = (n.lat - lat) * 111320;
-                        return new THREE.Vector2(x, -z);
-                    });
-
-                    try {
-                        const shape = new THREE.Shape(points);
-                        const height = el.tags.height ? parseFloat(el.tags.height) : (Math.random() * 25 + 10);
-                        
-                        const geom = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
-                        const mat = new THREE.MeshPhongMaterial({ color: 0x111111 });
-                        const mesh = new THREE.Mesh(geom, mat);
-                        
-                        mesh.rotation.x = -Math.PI / 2;
-                        
-                        // Cyber Wireframe
-                        const wire = new THREE.LineSegments(
-                            new THREE.EdgesGeometry(geom),
-                            new THREE.LineBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 })
-                        );
-                        mesh.add(wire);
-                        
-                        scene.add(mesh);
-                        document.getElementById('objects').innerText = `Buildings: ${loadedWays.size}`;
-                    } catch (err) {
-                        // Ignore occasional geometry tessellation errors
-                    }
-                }
-            });
-        }
-
-        function updateGps() {
-            // Reverse conversion: 3D coordinates back to real-world GPS
-            const currentLon = lon + (camera.position.x / (111320 * Math.cos(lat * Math.PI / 180)));
-            const currentLat = lat + (camera.position.z / -111320);
-            
-            document.getElementById('coords').innerText = `Lat: ${currentLat.toFixed(5)} | Lon: ${currentLon.toFixed(5)}`;
-
-            // Distance Check for Next Sector
-            if (!isFetching && camera.position.distanceTo(lastFetchPos) > UPDATE_THRESHOLD) {
-                lastFetchPos.copy(camera.position);
-                fetchMapData(currentLat, currentLon);
-            }
-        }
-
-        // --- 5. MAIN LOOP ---
+        // --- 5. ANIMATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
 
-            // Physics & Speed
-            const speed = keys['Space'] ? 5.5 : 1.8;
-            
-            // Rotation Sensitivity
-            if (keys['KeyW']) rotation.x -= 0.015;
-            if (keys['KeyS']) rotation.x += 0.015;
-            if (keys['KeyA']) rotation.y += 0.025;
-            if (keys['KeyD']) rotation.y -= 0.025;
+            // Movement
+            const speed = keys['Space'] ? 8.0 : 3.0;
+            if (keys['KeyW']) rotation.x -= 0.02;
+            if (keys['KeyS']) rotation.x += 0.02;
+            if (keys['KeyA']) rotation.y += 0.03;
+            if (keys['KeyD']) rotation.y -= 0.03;
 
             camera.quaternion.setFromEuler(rotation);
-
-            // Movement Vector
-            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
             camera.position.addScaledVector(dir, speed);
 
-            // Ground safety
+            // Floor collision
             if (camera.position.y < 5) camera.position.y = 5;
 
-            updateGps();
+            updateChunks();
+            
+            document.getElementById('dist').innerText = `Distance: ${Math.floor(camera.position.z)}m`;
             renderer.render(scene, camera);
         }
 
-        // Initial Boot
-        fetchMapData(lat, lon);
         animate();
-
-        // Responsive Window
         window.onresize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
